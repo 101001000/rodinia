@@ -5,7 +5,7 @@ using CUDA, NVTX
 const OUTPUT = haskey(ENV, "OUTPUT")
 
 # configuration
-const MAX_THREADS_PER_BLOCK = UInt32(512)
+const MAX_THREADS_PER_BLOCK = UInt32(256)
 
 struct Node
     starting::Int32

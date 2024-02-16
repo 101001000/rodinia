@@ -2,7 +2,7 @@ include("streamcluster_header.jl")
 
 using CUDA
 
-const THREADS_PER_BLOCK = 512
+const THREADS_PER_BLOCK = 256
 const MAXBLOCKS = 65536
 
 g_iter = 0 # counter for total # of g_iterations

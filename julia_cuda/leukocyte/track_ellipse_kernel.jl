@@ -1,9 +1,9 @@
 using CUDA
 
 # The number of threads per thread block
-const threads_per_block = 320
+const threads_per_block = 256
 # next_lowest_power_of_two = 2^(floor(log2(threads_per_block)))
-const next_lowest_power_of_two = 256
+const next_lowest_power_of_two = 2^(floor(log2(threads_per_block)))
 
 # Regularized version of the Heaviside step function:
 # He(x) = (atan(x) / pi) + 0.5

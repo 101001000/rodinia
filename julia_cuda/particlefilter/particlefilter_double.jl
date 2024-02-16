@@ -8,7 +8,7 @@ const OUTPUT = haskey(ENV, "OUTPUT")
 const M = typemax(Int32)
 const A = Int32(1103515245)
 const C = Int32(12345)
-const threads_per_block = 512
+const threads_per_block = 256
 
 
 # Utility functions
