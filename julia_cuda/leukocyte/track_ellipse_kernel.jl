@@ -3,7 +3,7 @@ using CUDA
 # The number of threads per thread block
 const threads_per_block = 256
 # next_lowest_power_of_two = 2^(floor(log2(threads_per_block)))
-const next_lowest_power_of_two = 2^(floor(log2(threads_per_block)))
+const next_lowest_power_of_two = 256
 
 # Regularized version of the Heaviside step function:
 # He(x) = (atan(x) / pi) + 0.5
@@ -18,9 +18,12 @@ function IMGVF_kernel(I_flat, IMGVF_flat, m_array, n_array, offsets, vx, vy, e,
     lambda = 8f0 * mu + 1f0
 
     cell_num = blockIdx().x
+
     m = m_array[cell_num]
     n = n_array[cell_num]
     cell_offset = offsets[cell_num]
+
+   
 
     # Shared copy of the matrix being computed
     IMGVF = @cuStaticSharedMem(Float32, (41 * 81,))
@@ -54,6 +57,8 @@ function IMGVF_kernel(I_flat, IMGVF_flat, m_array, n_array, offsets, vx, vy, e,
         end
     end
     sync_threads()
+
+
 
     # Set the converged flag to false
     if thread_id == 0
