@@ -123,10 +123,11 @@ function calc_path(wall, result, rows, cols, pyramid_height, block_cols, border_
         src, dst = dst, src
         iter = min(pyramid_height, rows - t - 1)
 
-        @cuda blocks = block_cols threads = BLOCK_SIZE dynproc_kernel(iter,
+        t = CUDA.@elapsed CUDA.@sync @cuda blocks = block_cols threads = BLOCK_SIZE dynproc_kernel(iter,
             wall, result[src], result[dst],
             cols, rows, t, border_cols
         )
+        println("dynproc_kernel kernel execution time: ", t, " seconds")
     end
 
     return dst

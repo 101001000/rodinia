@@ -126,16 +126,20 @@ end
 function lud_cuda(matrix, matrix_dim)
     i = 0
     while i < matrix_dim - BLOCK_SIZE
-        @cuda threads=BLOCK_SIZE lud_diagonal(matrix, i)
+        t = CUDA.@elapsed CUDA.@sync @cuda threads=BLOCK_SIZE lud_diagonal(matrix, i)
+        println("lud_diagonal kernel execution time: ", t, " seconds")
 
         grid_size = (matrix_dim-i)÷BLOCK_SIZE - 1
 
-        @cuda blocks=grid_size threads=BLOCK_SIZE*2 lud_perimeter(matrix, i)
+        t = CUDA.@elapsed CUDA.@sync @cuda blocks=grid_size threads=BLOCK_SIZE*2 lud_perimeter(matrix, i)
+        println("lud_perimeter kernel execution time: ", t, " seconds")
 
-        @cuda blocks=(grid_size, grid_size) threads=(BLOCK_SIZE, BLOCK_SIZE) lud_internal(matrix, i)
+        t = CUDA.@elapsed CUDA.@sync @cuda blocks=(grid_size, grid_size) threads=(BLOCK_SIZE, BLOCK_SIZE) lud_internal(matrix, i)
+        println("lud_internal kernel execution time: ", t, " seconds")
 
         i += BLOCK_SIZE
     end
 
-    @cuda threads=BLOCK_SIZE lud_diagonal(matrix, i)
+    t = CUDA.@elapsed CUDA.@sync @cuda threads=BLOCK_SIZE lud_diagonal(matrix, i)
+    println("lud_diagonal kernel execution time: ", t, " seconds")
 end

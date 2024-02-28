@@ -267,9 +267,11 @@ function IMGVF_cuda(I, vx, vy, e, max_iterations, cutoff)
     dev_n_array = CuArray(n_array)
     dev_offsets = CuArray(offsets)
 
-    @cuda blocks=num_cells threads=threads_per_block IMGVF_kernel(dev_I_flat,
+    t = CUDA.@elapsed CUDA.@sync @cuda blocks=num_cells threads=threads_per_block IMGVF_kernel(dev_I_flat,
         dev_IMGVF_flat, dev_m_array, dev_n_array, dev_offsets, Float32(vx),
         Float32(vy), Float32(e), max_iterations, Float32(cutoff))
+
+    println("IMGVF_kernel kernel execution time: ", t, " seconds")
 
     # Copy results back to host
     IMGVF = Vector{Matrix{Float32}}(undef, num_cells)

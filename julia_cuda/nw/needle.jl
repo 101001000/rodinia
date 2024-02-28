@@ -108,15 +108,17 @@ function main(args)
     println("Processing top-left matrix")
     # process top-left matrix
     for i = 1:block_width
-        @cuda blocks = (i, 1) threads = (BLOCK_SIZE, 1) needle_cuda_shared_1(
+        t = CUDA.@elapsed CUDA.@sync @cuda blocks = (i, 1) threads = (BLOCK_SIZE, 1) needle_cuda_shared_1(
             reference_cuda, matrix_cuda, max_cols, penalty, i, block_width)
+        println("needle_cuda_shared_1 kernel execution time: ", t, " seconds")
     end
 
     println("Processing bottom-right matrix")
     # process bottom-right matrix
     for i = block_width-1:-1:1
-        @cuda blocks = (i, 1) threads = (BLOCK_SIZE, 1) needle_cuda_shared_2(
+        t = CUDA.@elapsed CUDA.@sync @cuda blocks = (i, 1) threads = (BLOCK_SIZE, 1) needle_cuda_shared_2(
             reference_cuda, matrix_cuda, max_cols, penalty, i, block_width)
+        println("needle_cuda_shared_2 kernel execution time: ", t, " seconds")
     end
 
     output_itemsets = Array(matrix_cuda)

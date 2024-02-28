@@ -135,16 +135,20 @@ function main(args)
         stop[1] = false
         copyto!(g_stop, stop)
 
-        @cuda blocks = blocks threads = threads Kernel(
+        t = CUDA.@elapsed CUDA.@sync @cuda blocks = blocks threads = threads Kernel(
             g_graph_nodes, g_graph_edges, g_graph_mask,
             g_updating_graph_mask, g_graph_visited,
             g_cost, no_of_nodes
         )
+        println("Kernel1 execution time: ", t, " seconds")
 
-        @cuda blocks = blocks threads = threads Kernel2(
+        t = CUDA.@elapsed CUDA.@sync @cuda blocks = blocks threads = threads Kernel2(
             g_graph_mask, g_updating_graph_mask, g_graph_visited,
             g_stop, no_of_nodes
         )
+
+
+        println("Kernel2 execution time: ", t, " seconds")
 
         k += 1
         copyto!(stop, g_stop)

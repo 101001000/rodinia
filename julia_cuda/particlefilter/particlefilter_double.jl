@@ -415,20 +415,28 @@ function particlefilter(I::Array{UInt8}, IszX, IszY, Nfr, seed::Array{Int32}, Np
     g_seed = CuArray(seed)
 
     for k = 2:Nfr
-        @cuda blocks = num_blocks threads = threads_per_block likelihood_kernel(
+        t = CUDA.@elapsed CUDA.@sync @cuda blocks = num_blocks threads = threads_per_block likelihood_kernel(
             (X=g_arrayX, Y=g_arrayY), (x=g_xj, y=g_yj), g_ind,
             g_objxy, g_likelihood, g_I, g_weights,
             count_ones, k, IszY, Nfr, g_partial_sums,
             (max_size=max_size, Nparticles=Nparticles, seed=g_seed))
 
-        @cuda blocks = num_blocks threads = threads_per_block sum_kernel(
+        println("likelihood_kernel kernel execution time: ", t, " seconds")
+
+        t = CUDA.@elapsed CUDA.@sync @cuda blocks = num_blocks threads = threads_per_block sum_kernel(
             g_partial_sums, Nparticles)
 
-        @cuda blocks = num_blocks threads = threads_per_block normalize_weights_kernel(
+        println("sum_kernel kernel execution time: ", t, " seconds")
+
+        t = CUDA.@elapsed CUDA.@sync @cuda blocks = num_blocks threads = threads_per_block normalize_weights_kernel(
             g_weights, Nparticles, g_partial_sums, g_CDF, g_u, g_seed)
 
-        @cuda blocks = num_blocks threads = threads_per_block find_index_kernel(
+        println("normalize_weights_kernel kernel execution time: ", t, " seconds")
+
+        t = CUDA.@elapsed CUDA.@sync @cuda blocks = num_blocks threads = threads_per_block find_index_kernel(
             g_arrayX, g_arrayY, g_CDF, g_u, g_xj, g_yj, g_weights, Nparticles)
+
+        println("find_index_kernel kernel execution time: ", t, " seconds")
     end
 
     arrayX = Array(g_arrayX)
