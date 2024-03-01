@@ -3,7 +3,10 @@ const MATRIX_SIZE = BLOCK_SIZE * BLOCK_SIZE
 
 using CUDA
 
-function lud_diagonal(matrix, offset)
+# Kernels refactored to handle inputs and output matrix sepparately.
+# It's required as @btime will execute the same kernel more than once (even with samples=1,eval=1).
+
+function lud_diagonal(matrix, matrix_o, offset)
     shadow = @cuStaticSharedMem(Float32, (BLOCK_SIZE,BLOCK_SIZE))
 
     tx = threadIdx().x
@@ -35,12 +38,12 @@ function lud_diagonal(matrix, offset)
 
     # The first row is not modified, it is no need to write it back to the global memory.
     for i = 2:BLOCK_SIZE
-        @inbounds matrix[offset + tx, offset + i] = shadow[tx, i]
+        @inbounds matrix_o[offset + tx, offset + i] = shadow[tx, i]
     end
     return
 end
 
-function lud_perimeter(matrix, offset)
+function lud_perimeter(matrix, matrix_o, offset)
     dia = @cuStaticSharedMem(Float32, (BLOCK_SIZE,BLOCK_SIZE))
     peri_row = @cuStaticSharedMem(Float32, (BLOCK_SIZE,BLOCK_SIZE))
     peri_col = @cuStaticSharedMem(Float32, (BLOCK_SIZE,BLOCK_SIZE))
@@ -89,18 +92,18 @@ function lud_perimeter(matrix, offset)
     if threadIdx().x <= BLOCK_SIZE # peri-row
         index = threadIdx().x
         for i = 2:BLOCK_SIZE
-            @inbounds matrix[offset + index + blockIdx().x * BLOCK_SIZE, offset + i] = peri_row[index, i]
+            @inbounds matrix_o[offset + index + blockIdx().x * BLOCK_SIZE, offset + i] = peri_row[index, i]
         end
     else # peri-col
         index = threadIdx().x - BLOCK_SIZE
         for i = 1:BLOCK_SIZE
-            @inbounds matrix[offset + index, offset + blockIdx().x * BLOCK_SIZE + i] = peri_col[index, i]
+            @inbounds matrix_o[offset + index, offset + blockIdx().x * BLOCK_SIZE + i] = peri_col[index, i]
         end
     end
     return
 end
 
-function lud_internal(matrix, offset)
+function lud_internal(matrix, matrix_o, offset)
     peri_col = @cuStaticSharedMem(Float32, (BLOCK_SIZE,BLOCK_SIZE))
     peri_row = @cuStaticSharedMem(Float32, (BLOCK_SIZE,BLOCK_SIZE))
 
@@ -119,27 +122,37 @@ function lud_internal(matrix, offset)
     for i = 1:BLOCK_SIZE
         @inbounds sum += peri_col[i, ty] * peri_row[tx, i]
     end
-    @inbounds matrix[global_col_id + tx, global_row_id + ty] -= sum
+    @inbounds matrix_o[global_col_id + tx, global_row_id + ty] = matrix[global_col_id + tx, global_row_id + ty] - sum
     return
 end
 
 function lud_cuda(matrix, matrix_dim)
     i = 0
+			
+	matrix_o = CUDA.zeros(Float32, (matrix_dim, matrix_dim))
+	CUDA.copy!(matrix_o, matrix)
+
+	# Converting an io-matrix into 2 matrix is not trivial if not all the values are written as it is the case.
+	# For that reason it's necessary to reset the state continuously with CUDA.copy!
+
     while i < matrix_dim - BLOCK_SIZE
-        t = CUDA.@elapsed CUDA.@sync @cuda threads=BLOCK_SIZE lud_diagonal(matrix, i)
-        println("lud_diagonal kernel execution time: ", t, " seconds")
+		
+        @cuda threads=BLOCK_SIZE lud_diagonal(matrix, matrix_o, i)
 
         grid_size = (matrix_dim-i)÷BLOCK_SIZE - 1
 
-        t = CUDA.@elapsed CUDA.@sync @cuda blocks=grid_size threads=BLOCK_SIZE*2 lud_perimeter(matrix, i)
-        println("lud_perimeter kernel execution time: ", t, " seconds")
+		CUDA.copy!(matrix, matrix_o)
 
-        t = CUDA.@elapsed CUDA.@sync @cuda blocks=(grid_size, grid_size) threads=(BLOCK_SIZE, BLOCK_SIZE) lud_internal(matrix, i)
-        println("lud_internal kernel execution time: ", t, " seconds")
+        @cuda blocks=grid_size threads=BLOCK_SIZE*2 lud_perimeter(matrix, matrix_o, i)
+
+		CUDA.copy!(matrix, matrix_o)
+
+        @cuda blocks=(grid_size, grid_size) threads=(BLOCK_SIZE, BLOCK_SIZE) lud_internal(matrix, matrix_o, i)
+		
+		CUDA.copy!(matrix, matrix_o)
 
         i += BLOCK_SIZE
     end
 
-    t = CUDA.@elapsed CUDA.@sync @cuda threads=BLOCK_SIZE lud_diagonal(matrix, i)
-    println("lud_diagonal kernel execution time: ", t, " seconds")
+    @cuda threads=BLOCK_SIZE lud_diagonal(matrix_o, matrix, i)
 end
