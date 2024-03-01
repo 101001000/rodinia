@@ -29,3 +29,16 @@ parsed by a script, see eg. `tools/profile`.
 the CUDA and Julia+CUDA suites. If you have interest in other benchmarks, or running other
 suites, do check the revision history of said benchmark in one of the actively-maintained
 suite subfolders (ie. `cuda/` or `julia_cuda/`).
+
+
+Changes respect to the original repo
+-----
+
+I have introduced additional changes to fit the [Juliana](https://github.com/101001000/juliana) project. 
+
+* Blocksizes reduced to 256 to fit into oneAPI GPUs
+* Benchmarking with [BenchmarkTools](https://github.com/JuliaCI/BenchmarkTools.jl)
+* Read-Write variables inside kernels splitted to intput and output variables (required for passing the verification tests, as @btime executes more than once the kernels making stateful kernels to behave differently)
+* General maintenance such the removal of the deprecated CUDA.jl features
+
+
