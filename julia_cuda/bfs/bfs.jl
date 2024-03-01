@@ -12,30 +12,31 @@ struct Node
     no_of_edges::Int32
 end
 
-function Kernel(g_graph_nodes, g_graph_edges, g_graph_mask,
-    g_updating_graph_mask, g_graph_visited, g_cost,
+function Kernel(g_graph_nodes, g_graph_edges, g_graph_mask_i, g_graph_mask_o,
+    g_updating_graph_mask, g_graph_visited, g_cost_i, g_cost_o,
     no_of_nodes)
     tid = (blockIdx().x - 1) * MAX_THREADS_PER_BLOCK + threadIdx().x
-    if tid <= no_of_nodes && g_graph_mask[tid]
-        g_graph_mask[tid] = false
+    if tid <= no_of_nodes && g_graph_mask_i[tid]
+        g_graph_mask_o[tid] = false
         for i = g_graph_nodes[tid].starting:(g_graph_nodes[tid].starting+g_graph_nodes[tid].no_of_edges-Int32(1))
             id = g_graph_edges[i]
             if !g_graph_visited[id]
-                g_cost[id] = g_cost[tid] + Int32(1)
+                g_cost_o[id] = g_cost_i[tid] + Int32(1)
                 g_updating_graph_mask[id] = true
             end
         end
     end
+	return
 end
 
-function Kernel2(g_graph_mask, g_updating_graph_mask, g_graph_visited,
+function Kernel2(g_graph_mask, g_updating_graph_mask_i, g_updating_graph_mask_o, g_graph_visited,
     g_over, no_of_nodes)
     tid = (blockIdx().x - UInt32(1)) * MAX_THREADS_PER_BLOCK + threadIdx().x
-    if tid <= no_of_nodes && g_updating_graph_mask[tid]
+    if tid <= no_of_nodes && g_updating_graph_mask_i[tid]
         g_graph_mask[tid] = true
         g_graph_visited[tid] = true
         g_over[1] = true
-        g_updating_graph_mask[tid] = false
+        g_updating_graph_mask_o[tid] = false
     end
     return
 end
@@ -126,9 +127,14 @@ function main(args)
     g_cost = CuArray(h_cost)
     g_stop = CuArray{Bool}(undef, 1)
 
+
     k = 0
     println("Start traversing the tree")
     stop = Bool[1]
+
+	g_graph_mask_o = CUDA.zeros(Bool, size(g_graph_mask))
+	g_cost_o = CUDA.zeros(Int32, size(g_cost))
+	g_updating_graph_mask_o = CUDA.zeros(Bool, size(g_updating_graph_mask))
 
     while true
         # if no thread changes this value then the loop stops
@@ -136,19 +142,37 @@ function main(args)
         copyto!(g_stop, stop)
 
         t = CUDA.@elapsed CUDA.@sync @cuda blocks = blocks threads = threads Kernel(
-            g_graph_nodes, g_graph_edges, g_graph_mask,
+            g_graph_nodes, g_graph_edges, g_graph_mask, g_graph_mask_o,
             g_updating_graph_mask, g_graph_visited,
-            g_cost, no_of_nodes
+            g_cost, g_cost_o, no_of_nodes
         )
         println("Kernel1 execution time: ", t, " seconds")
+		
+		t = CUDA.@elapsed CUDA.@sync @cuda blocks = blocks threads = threads Kernel(
+            g_graph_nodes, g_graph_edges, g_graph_mask, g_graph_mask_o,
+            g_updating_graph_mask, g_graph_visited,
+            g_cost, g_cost_o, no_of_nodes
+        )
+        println("Kernel1 execution time: ", t, " seconds")
+		
+		CUDA.copy!(g_graph_mask, g_graph_mask_o)
+		CUDA.copy!(g_cost, g_cost_o)
 
         t = CUDA.@elapsed CUDA.@sync @cuda blocks = blocks threads = threads Kernel2(
-            g_graph_mask, g_updating_graph_mask, g_graph_visited,
+            g_graph_mask, g_updating_graph_mask, g_updating_graph_mask_o, g_graph_visited,
             g_stop, no_of_nodes
         )
 
+        println("Kernel2 execution time: ", t, " seconds")
+		
+		t = CUDA.@elapsed CUDA.@sync @cuda blocks = blocks threads = threads Kernel2(
+            g_graph_mask, g_updating_graph_mask, g_updating_graph_mask_o, g_graph_visited,
+            g_stop, no_of_nodes
+        )
 
         println("Kernel2 execution time: ", t, " seconds")
+
+		CUDA.copy!(g_updating_graph_mask, g_updating_graph_mask_o)
 
         k += 1
         copyto!(stop, g_stop)
