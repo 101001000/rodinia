@@ -2,6 +2,7 @@
 
 #using CUDAdrv, CUDAnative, NVTX
 using CUDA, NVTX
+using BenchmarkTools
 
 using Printf
 
@@ -79,10 +80,12 @@ function main(args)
     d_distances = CuArray{Float32}(undef, numRecords)
 
     # Execute kernel. There will be no more than (gridY - 1) extra blocks.
-    t = CUDA.@elapsed CUDA.@sync @cuda blocks = (gridX, gridY) threads = threadsPerBlock euclid(
-        d_locations, d_distances, numRecords, lat, lng)
+    b = @benchmark CUDA.@sync @cuda blocks = ($gridX, $gridY) threads = $threadsPerBlock euclid(
+        $d_locations, $d_distances, $numRecords, $lat, $lng)
+    println("euclid")
+    display(b)
     
-    println("euclid kernel execution time: ", t, " seconds")
+
 
     # Copy data from device memory to host memory.
     distances = Array(d_distances)
