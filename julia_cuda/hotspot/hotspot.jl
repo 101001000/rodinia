@@ -3,6 +3,7 @@
 using CUDA, CUDA, NVTX
 
 using Printf
+using BenchmarkTools
 
 const OUTPUT = haskey(ENV, "OUTPUT")
 
@@ -191,11 +192,12 @@ function compute_tran_temp(MatrixPower, MatrixTemp, col, row, total_iterations,
         temp = src
         src = dst
         dst = temp
-        t = CUDA.@elapsed CUDA.@sync @cuda blocks = (blockCols, blockRows) threads = (BLOCK_SIZE, BLOCK_SIZE) calculate_temp(
-            min(num_iterations, total_iterations - t),
-            MatrixPower, MatrixTemp[src+1], MatrixTemp[dst+1],
-            col, row, borderCols, borderRows, Cap, Rx, Ry, Rz, step)
-        println("calculate_temp kernel execution time: ", t, " seconds")
+        b = @benchmark CUDA.@sync @cuda blocks = ($blockCols, $blockRows) threads = ($BLOCK_SIZE, $BLOCK_SIZE) calculate_temp(
+            min($num_iterations, $total_iterations - $t),
+            $MatrixPower, $MatrixTemp[$src+1], $MatrixTemp[$dst+1],
+            $col, $row, $borderCols, $borderRows, $Cap, $Rx, $Ry, $Rz, $step)
+        println("calculate_temp")
+        display(b)
     end
 
     return dst
