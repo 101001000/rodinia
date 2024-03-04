@@ -3,6 +3,8 @@ const WIDTH = 16    # shared memory width
 const HEIGHT = 16   # shared memory height
 const THREADS = 256
 
+using BenchmarkTools
+
 function bpnn_train_cuda(net)
     inp = net.input_n
     hid = net.hidden_n
@@ -30,8 +32,10 @@ function bpnn_train_cuda(net)
 
     println("Performing GPU computation")
 
-    @cuda blocks = (1, num_blocks) threads = (16, 16) bpnn_layerforward_CUDA(
-        input_cuda, output_hidden_cuda, input_hidden_cuda, hidden_partial_sum, inp, hid)
+    println("bpnn_layerforward_CUDA")
+    b = @benchmark CUDA.@sync @cuda blocks = (1, $num_blocks) threads = (16, 16) bpnn_layerforward_CUDA(
+        $input_cuda, $output_hidden_cuda, $input_hidden_cuda, $hidden_partial_sum, $inp, $hid)
+    display(b)
 
     partial_sum = Array(hidden_partial_sum)
 
@@ -57,10 +61,10 @@ function bpnn_train_cuda(net)
 
     input_hidden_cuda = CuArray(input_weights_one_dim)
 
-    t = CUDA.@elapsed CUDA.@sync @cuda blocks = (1, num_blocks) threads = (16, 16) bpnn_adjust_weights_cuda(
-        hidden_delta_cuda, hid, input_cuda, inp, input_hidden_cuda, input_prev_weights_cuda)
-
-    println("bpnn_adjust_weights_cuda kernel execution time: ", t, " seconds")
+    println("bpnn_adjust_weights_cuda")
+    b = @benchmark  CUDA.@sync @cuda blocks = (1, $num_blocks) threads = (16, 16) bpnn_adjust_weights_cuda(
+        $hidden_delta_cuda, $hid, $input_cuda, $inp, $input_hidden_cuda, $input_prev_weights_cuda)
+    display(b)
 
     Array(input_cuda)
 end
