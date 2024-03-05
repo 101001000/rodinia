@@ -2,6 +2,7 @@
 
 using CUDA, NVTX
 using LLVM
+using BenchmarkTools
 
 using Printf
 
@@ -9,6 +10,7 @@ include("../../common/julia/crand.jl")
 const rng = LibcRNG()
 
 include("needle_kernel.jl")
+include("../../common/julia/utils.jl")
 
 const OUTPUT = haskey(ENV, "OUTPUT")
 
@@ -42,6 +44,9 @@ const blosum62 = [
      0 -1 -1 -1 -2 -1 -1 -1 -1 -1 -1 -1 -1 -1 -2  0  0 -2 -1 -1 -1 -1 -1 -4;
     -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4  1;
 ]
+
+needle_cuda_shared_1_benchmarks = []
+needle_cuda_shared_2_benchmarks = []
 
 function usage()
     println(
@@ -108,18 +113,27 @@ function main(args)
     println("Processing top-left matrix")
     # process top-left matrix
     for i = 1:block_width
-        t = CUDA.@elapsed CUDA.@sync @cuda blocks = (i, 1) threads = (BLOCK_SIZE, 1) needle_cuda_shared_1(
-            reference_cuda, matrix_cuda, max_cols, penalty, i, block_width)
-        println("needle_cuda_shared_1 kernel execution time: ", t, " seconds")
+        print("Progress: $(100*i/block_width)%   \r")
+        flush(stdout)
+        b = @benchmark (CUDA.@sync @cuda blocks = ($i, 1) threads = ($BLOCK_SIZE, 1) needle_cuda_shared_1(
+            $reference_cuda, $matrix_cuda, $max_cols, $penalty, $i, $block_width))
+        push!(needle_cuda_shared_1_benchmarks, b)
     end
+
+    println("needle_cuda_shared_1")
+    display(aggregate_benchmarks(needle_cuda_shared_1_benchmarks))
 
     println("Processing bottom-right matrix")
     # process bottom-right matrix
     for i = block_width-1:-1:1
-        t = CUDA.@elapsed CUDA.@sync @cuda blocks = (i, 1) threads = (BLOCK_SIZE, 1) needle_cuda_shared_2(
-            reference_cuda, matrix_cuda, max_cols, penalty, i, block_width)
-        println("needle_cuda_shared_2 kernel execution time: ", t, " seconds")
+        print("Progress: $(100 - (100*i/block_width))%   \r")
+        b = @benchmark (CUDA.@sync @cuda blocks = ($i, 1) threads = ($BLOCK_SIZE, 1) needle_cuda_shared_2(
+            $reference_cuda, $matrix_cuda, $max_cols, $penalty, $i, $block_width))
+        push!(needle_cuda_shared_2_benchmarks, b)
     end
+
+    println("needle_cuda_shared_2")
+    display(aggregate_benchmarks(needle_cuda_shared_2_benchmarks))
 
     output_itemsets = Array(matrix_cuda)
 
