@@ -1,11 +1,17 @@
 #!/usr/bin/env julia
 
 using CUDA, NVTX
+using BenchmarkTools
+
+include("../../common/julia/utils.jl")
 
 const OUTPUT = haskey(ENV, "OUTPUT")
 
 # configuration
 const MAX_THREADS_PER_BLOCK = UInt32(256)
+
+Kernel_benchmarks = []
+Kernel2_benchmarks = []
 
 struct Node
     starting::Int32
@@ -141,37 +147,23 @@ function main(args)
         stop[1] = false
         copyto!(g_stop, stop)
 
-        t = CUDA.@elapsed CUDA.@sync @cuda blocks = blocks threads = threads Kernel(
-            g_graph_nodes, g_graph_edges, g_graph_mask, g_graph_mask_o,
-            g_updating_graph_mask, g_graph_visited,
-            g_cost, g_cost_o, no_of_nodes
+        b = @benchmark CUDA.@sync @cuda blocks = $blocks threads = $threads Kernel(
+            $g_graph_nodes, $g_graph_edges, $g_graph_mask, $g_graph_mask_o,
+            $g_updating_graph_mask, $g_graph_visited,
+            $g_cost, $g_cost_o, $no_of_nodes
         )
-        println("Kernel1 execution time: ", t, " seconds")
-		
-		t = CUDA.@elapsed CUDA.@sync @cuda blocks = blocks threads = threads Kernel(
-            g_graph_nodes, g_graph_edges, g_graph_mask, g_graph_mask_o,
-            g_updating_graph_mask, g_graph_visited,
-            g_cost, g_cost_o, no_of_nodes
-        )
-        println("Kernel1 execution time: ", t, " seconds")
-		
+        push!(Kernel_benchmarks, b)
+		                
 		CUDA.copy!(g_graph_mask, g_graph_mask_o)
 		CUDA.copy!(g_cost, g_cost_o)
 
-        t = CUDA.@elapsed CUDA.@sync @cuda blocks = blocks threads = threads Kernel2(
-            g_graph_mask, g_updating_graph_mask, g_updating_graph_mask_o, g_graph_visited,
-            g_stop, no_of_nodes
+        b = @benchmark CUDA.@sync @cuda blocks = $blocks threads = $threads Kernel2(
+            $g_graph_mask, $g_updating_graph_mask, $g_updating_graph_mask_o, $g_graph_visited,
+            $g_stop, $no_of_nodes
         )
 
-        println("Kernel2 execution time: ", t, " seconds")
+        push!(Kernel2_benchmarks, b)
 		
-		t = CUDA.@elapsed CUDA.@sync @cuda blocks = blocks threads = threads Kernel2(
-            g_graph_mask, g_updating_graph_mask, g_updating_graph_mask_o, g_graph_visited,
-            g_stop, no_of_nodes
-        )
-
-        println("Kernel2 execution time: ", t, " seconds")
-
 		CUDA.copy!(g_updating_graph_mask, g_updating_graph_mask_o)
 
         k += 1
@@ -185,6 +177,11 @@ function main(args)
     h_cost = Array(g_cost)
 
     println("Kernel Executed $k times")
+
+    println("Kernel")
+    display(aggregate_benchmarks(Kernel_benchmarks))
+    println("Kernel2")
+    display(aggregate_benchmarks(Kernel2_benchmarks))
 
     # Store the result into a file
     if OUTPUT
