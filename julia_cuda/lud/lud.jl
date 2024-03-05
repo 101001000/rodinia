@@ -5,6 +5,7 @@ using LLVM
 
 include("common.jl")
 include("lud_kernel.jl")
+include("../../common/julia/utils.jl")
 
 function main(args)
     println("WG size of kernel = $BLOCK_SIZE X $BLOCK_SIZE")
@@ -42,6 +43,13 @@ function main(args)
         matrix = Array(d_matrix)
     end
     println("Time consumed(ms): $(1000sec)")
+
+    println("lud_diagonal")
+    display(aggregate_benchmarks(lud_diagonal_benchmarks))
+    println("lud_perimeter")
+    display(aggregate_benchmarks(lud_perimeter_benchmarks))
+    println("lud_internal")
+    display(aggregate_benchmarks(lud_internal_benchmarks))
 
     if verify
         println("After LUD")

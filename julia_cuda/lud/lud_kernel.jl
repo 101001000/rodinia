@@ -2,6 +2,11 @@ const BLOCK_SIZE = 16
 const MATRIX_SIZE = BLOCK_SIZE * BLOCK_SIZE
 
 using CUDA
+using BenchmarkTools
+
+lud_diagonal_benchmarks = []
+lud_perimeter_benchmarks = []
+lud_internal_benchmarks = []
 
 # Kernels refactored to handle inputs and output matrix sepparately.
 # It's required as @btime will execute the same kernel more than once (even with samples=1,eval=1).
@@ -137,22 +142,26 @@ function lud_cuda(matrix, matrix_dim)
 
     while i < matrix_dim - BLOCK_SIZE
 		
-        @cuda threads=BLOCK_SIZE lud_diagonal(matrix, matrix_o, i)
+        b = @benchmark @cuda threads=$BLOCK_SIZE lud_diagonal($matrix, $matrix_o, $i)
+        push!(lud_diagonal_benchmarks, b)
 
         grid_size = (matrix_dim-i)÷BLOCK_SIZE - 1
 
 		CUDA.copy!(matrix, matrix_o)
 
-        @cuda blocks=grid_size threads=BLOCK_SIZE*2 lud_perimeter(matrix, matrix_o, i)
+        b = @benchmark @cuda blocks=$grid_size threads=$BLOCK_SIZE*2 lud_perimeter($matrix, $matrix_o, $i)
+        push!(lud_perimeter_benchmarks, b)
 
 		CUDA.copy!(matrix, matrix_o)
 
-        @cuda blocks=(grid_size, grid_size) threads=(BLOCK_SIZE, BLOCK_SIZE) lud_internal(matrix, matrix_o, i)
-		
+        b = @benchmark @cuda blocks=($grid_size, $grid_size) threads=($BLOCK_SIZE, $BLOCK_SIZE) lud_internal($matrix, $matrix_o, $i)
+        push!(lud_internal_benchmarks, b)
+
 		CUDA.copy!(matrix, matrix_o)
 
         i += BLOCK_SIZE
     end
 
-    @cuda threads=BLOCK_SIZE lud_diagonal(matrix_o, matrix, i)
+    b = @benchmark @cuda threads=$BLOCK_SIZE lud_diagonal($matrix_o, $matrix, $i)
+    push!(lud_diagonal_benchmarks, b)
 end
