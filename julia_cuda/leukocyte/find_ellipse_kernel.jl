@@ -1,4 +1,5 @@
 using CUDA
+using BenchmarkTools
 
 # The number of sample points in each ellipse (stencil)
 const NPOINTS = 150
@@ -101,10 +102,11 @@ function GICOV_CUDA(host_grad_x, host_grad_y, GICOV_constants)
     num_blocks = size(host_grad_y, 2) - (2 * MaxR)
     threads_per_block = size(host_grad_x, 1) - (2 * MaxR)
 
-    t = CUDA.@elapsed CUDA.@sync @cuda blocks = num_blocks threads = threads_per_block GICOV_kernel(device_grad_x, device_grad_y,
-        GICOV_constants.c_sin_angle, GICOV_constants.c_cos_angle,
-        GICOV_constants.c_tX, GICOV_constants.c_tY, device_gicov_out)
-    println("GICOV_kernel kernel execution time: ", t, " seconds")
+    b = @benchmark CUDA.@sync @cuda blocks = $num_blocks threads = $threads_per_block GICOV_kernel($device_grad_x, $device_grad_y,
+        $GICOV_constants.c_sin_angle, $GICOV_constants.c_cos_angle,
+        $GICOV_constants.c_tX, $GICOV_constants.c_tY, $device_gicov_out)
+    println("GICOV_kernel")
+    display(b)
 
     Array(device_gicov_out)'
 end
@@ -172,8 +174,9 @@ function dilate_CUDA(img_in, GICOV_constants)
     threads_per_block = 176
     num_blocks = trunc(Int64, num_threads / threads_per_block + 0.5)
 
-    t = CUDA.@elapsed CUDA.@sync @cuda blocks = num_blocks threads = threads_per_block dilate_kernel(img_dev, GICOV_constants.c_strel, dilated_out)
-    println("dilate_kernel kernel execution time: ", t, " seconds")
+    b = @benchmark CUDA.@sync @cuda blocks = $num_blocks threads = $threads_per_block dilate_kernel($img_dev, $GICOV_constants.c_strel, $dilated_out)
+    println("dilate_kernel")
+    display(b)
 
     Array(dilated_out)
 end
