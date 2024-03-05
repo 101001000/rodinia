@@ -1,6 +1,9 @@
 #!/usr/bin/env julia
 
 using CUDA, NVTX
+using BenchmarkTools
+
+include("../../common/julia/utils.jl")
 
 const OUTPUT = haskey(ENV, "OUTPUT")
 
@@ -9,6 +12,11 @@ const M = typemax(Int32)
 const A = Int32(1103515245)
 const C = Int32(12345)
 const threads_per_block = 256
+
+likelihood_kernel_benchmarks = []
+sum_kernel_benchmarks = []
+normalize_weights_kernel_benchmarks = []
+find_index_kernel_benchmarks = []
 
 
 # Utility functions
@@ -415,29 +423,40 @@ function particlefilter(I::Array{UInt8}, IszX, IszY, Nfr, seed::Array{Int32}, Np
     g_seed = CuArray(seed)
 
     for k = 2:Nfr
-        t = CUDA.@elapsed CUDA.@sync @cuda blocks = num_blocks threads = threads_per_block likelihood_kernel(
-            (X=g_arrayX, Y=g_arrayY), (x=g_xj, y=g_yj), g_ind,
-            g_objxy, g_likelihood, g_I, g_weights,
-            count_ones, k, IszY, Nfr, g_partial_sums,
-            (max_size=max_size, Nparticles=Nparticles, seed=g_seed))
 
-        println("likelihood_kernel kernel execution time: ", t, " seconds")
+        print("Progress: $(100*k/Nfr)%   \r")
+        flush(stdout)
 
-        t = CUDA.@elapsed CUDA.@sync @cuda blocks = num_blocks threads = threads_per_block sum_kernel(
-            g_partial_sums, Nparticles)
+        b = @benchmark CUDA.@sync @cuda blocks = $num_blocks threads = $threads_per_block likelihood_kernel(
+            (X=$g_arrayX, Y=$g_arrayY), (x=$g_xj, y=$g_yj), $g_ind,
+            $g_objxy, $g_likelihood, $g_I, $g_weights,
+            $count_ones, $k, $IszY, $Nfr, $g_partial_sums,
+            (max_size=$max_size, Nparticles=$Nparticles, seed=$g_seed))
 
-        println("sum_kernel kernel execution time: ", t, " seconds")
+        push!(likelihood_kernel_benchmarks, b)
 
-        t = CUDA.@elapsed CUDA.@sync @cuda blocks = num_blocks threads = threads_per_block normalize_weights_kernel(
-            g_weights, Nparticles, g_partial_sums, g_CDF, g_u, g_seed)
+        b = @benchmark CUDA.@sync @cuda blocks = $num_blocks threads = $threads_per_block sum_kernel(
+            $g_partial_sums, $Nparticles)
+        push!(sum_kernel_benchmarks, b)
 
-        println("normalize_weights_kernel kernel execution time: ", t, " seconds")
+        b = @benchmark CUDA.@sync @cuda blocks = $num_blocks threads = $threads_per_block normalize_weights_kernel(
+            $g_weights, $Nparticles, $g_partial_sums, $g_CDF, $g_u, $g_seed)
+        push!(normalize_weights_kernel_benchmarks, b)
 
-        t = CUDA.@elapsed CUDA.@sync @cuda blocks = num_blocks threads = threads_per_block find_index_kernel(
-            g_arrayX, g_arrayY, g_CDF, g_u, g_xj, g_yj, g_weights, Nparticles)
+        b = @benchmark CUDA.@sync @cuda blocks = $num_blocks threads = $threads_per_block find_index_kernel(
+            $g_arrayX, $g_arrayY, $g_CDF, $g_u, $g_xj, $g_yj, $g_weights, $Nparticles)
+        push!(find_index_kernel_benchmarks, b)
 
-        println("find_index_kernel kernel execution time: ", t, " seconds")
     end
+
+    println("likelihood_kernel")
+    display(aggregate_benchmarks(likelihood_kernel_benchmarks))
+    println("sum_kernel")
+    display(aggregate_benchmarks(sum_kernel_benchmarks))
+    println("normalize_weights")
+    display(aggregate_benchmarks(normalize_weights_kernel_benchmarks))
+    println("find_index_kernel")
+    display(aggregate_benchmarks(find_index_kernel_benchmarks))
 
     arrayX = Array(g_arrayX)
     arrayY = Array(g_arrayY)
