@@ -1,4 +1,5 @@
 include("track_ellipse_kernel.jl")
+include("../../common/julia/utils.jl")
 
 const OUTPUT = haskey(ENV, "OUTPUT")
 
@@ -146,6 +147,9 @@ function ellipsetrack(video, xc0, yc0, Nc, R, Np, Nf)
             close(pFile)
         end
     end
+
+    println("IMGVF_kernel")
+    display(aggregate_benchmarks(IMGVF_benchmarks))
 
     println()
     println()

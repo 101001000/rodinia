@@ -1,9 +1,12 @@
 using CUDA
+using BenchmarkTools
 
 # The number of threads per thread block
 const threads_per_block = 256
 # next_lowest_power_of_two = 2^(floor(log2(threads_per_block)))
 const next_lowest_power_of_two = 256
+
+IMGVF_benchmarks = []
 
 # Regularized version of the Heaviside step function:
 # He(x) = (atan(x) / pi) + 0.5
@@ -228,7 +231,6 @@ function IMGVF_kernel(I_flat, IMGVF_flat, m_array, n_array, offsets, vx, vy, e,
     end
 end
 
-
 function IMGVF_cuda(I, vx, vy, e, max_iterations, cutoff)
     # Copy input matrices to device
     num_cells = size(I,1)
@@ -267,11 +269,11 @@ function IMGVF_cuda(I, vx, vy, e, max_iterations, cutoff)
     dev_n_array = CuArray(n_array)
     dev_offsets = CuArray(offsets)
 
-    t = CUDA.@elapsed CUDA.@sync @cuda blocks=num_cells threads=threads_per_block IMGVF_kernel(dev_I_flat,
-        dev_IMGVF_flat, dev_m_array, dev_n_array, dev_offsets, Float32(vx),
-        Float32(vy), Float32(e), max_iterations, Float32(cutoff))
+    b = @benchmark CUDA.@sync @cuda blocks=$num_cells threads=$threads_per_block IMGVF_kernel($dev_I_flat,
+        $dev_IMGVF_flat, $dev_m_array, $dev_n_array, $dev_offsets, Float32($vx),
+        Float32($vy), Float32($e), $max_iterations, Float32($cutoff))
 
-    println("IMGVF_kernel kernel execution time: ", t, " seconds")
+    push!(IMGVF_benchmarks, b)
 
     # Copy results back to host
     IMGVF = Vector{Matrix{Float32}}(undef, num_cells)
