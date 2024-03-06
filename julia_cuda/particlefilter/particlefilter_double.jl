@@ -180,15 +180,15 @@ end
     end
 end
 
-@inline function d_randu(seed, index)
-    num = A * seed[index] + C
-    seed[index] = num % M
-    return CUDA.abs(seed[index] / M)
+@inline function d_randu(seed_i, seed_o, index)
+    num = A * seed_i[index] + C
+    seed_o[index] = num % M
+    return CUDA.abs(seed_o[index] / M)
 end
 
-@inline function d_randn(seed, index)
-    u = d_randu(seed, index)
-    v = d_randu(seed, index)
+@inline function d_randn(seed_i, seed_o, index)
+    u = d_randu(seed_i, seed_o, index)
+    v = d_randu(seed_o, seed_o, index)
     cosine = CUDA.cos(2 * pi * v)
     rt = -2 * CUDA.log(u)
     return CUDA.sqrt(rt) * cosine
@@ -242,7 +242,7 @@ function find_index_kernel(arrayX, arrayY, CDF, u, xj, yj, weights, Nparticles)
     return
 end
 
-function normalize_weights_kernel(weights, Nparticles, partial_sums, CDF, u, seed)
+function normalize_weights_kernel(weights, Nparticles, partial_sums, CDF, u, seed_i, seed_o)
     block_id = blockIdx().x
     i = blockDim().x * (block_id - 1) + threadIdx().x
 
@@ -263,7 +263,7 @@ function normalize_weights_kernel(weights, Nparticles, partial_sums, CDF, u, see
 
     if i == 1
         cdf_calc(CDF, weights, Nparticles)
-        u[1] = (1 / Nparticles) * d_randu(seed, i)
+        u[1] = (1 / Nparticles) * d_randu(seed_i, seed_o, i)
     end
     sync_threads()
 
@@ -305,8 +305,8 @@ function likelihood_kernel(array, j, ind, objxy, likelihood, I, weights,
         array.Y[i] = j.y[i]
         weights[i] = 1 / param.Nparticles
 
-        array.X[i] = array.X[i] + 1.0 + 5.0 * d_randn(param.seed, i)
-        array.Y[i] = array.Y[i] - 2.0 + 2.0 * d_randn(param.seed, i)
+        array.X[i] = array.X[i] + 1.0 + 5.0 * d_randn(param.seed_i, param.seed_o, i)
+        array.Y[i] = array.Y[i] - 2.0 + 2.0 * d_randn(param.seed_o, param.seed_o, i)
     end
 
     sync_threads()
@@ -420,32 +420,33 @@ function particlefilter(I::Array{UInt8}, IszX, IszY, Nfr, seed::Array{Int32}, Np
     g_objxy = CuArray(objxy)
     g_I = CuArray(I)
     g_weights = CuArray(weights)
-    g_seed = CuArray(seed)
+    g_seed_i = CuArray(seed)
+    g_seed_o = CuArray(seed)
 
     for k = 2:Nfr
 
         print("Progress: $(100*k/Nfr)%   \r")
         flush(stdout)
 
-        b = @benchmark CUDA.@sync @cuda blocks = $num_blocks threads = $threads_per_block likelihood_kernel(
-            (X=$g_arrayX, Y=$g_arrayY), (x=$g_xj, y=$g_yj), $g_ind,
-            $g_objxy, $g_likelihood, $g_I, $g_weights,
-            $count_ones, $k, $IszY, $Nfr, $g_partial_sums,
-            (max_size=$max_size, Nparticles=$Nparticles, seed=$g_seed))
+        CUDA.@sync @cuda blocks = num_blocks threads = threads_per_block likelihood_kernel(
+            (X=g_arrayX, Y=g_arrayY), (x=g_xj, y=g_yj), g_ind,
+            g_objxy, g_likelihood, g_I, g_weights,
+            count_ones, k, IszY, Nfr, g_partial_sums,
+            (max_size=max_size, Nparticles=Nparticles, seed_i=g_seed_i, seed_o=g_seed_o))
 
-        push!(likelihood_kernel_benchmarks, b)
+        CUDA.copy!(g_seed_i, g_seed_o)
+        
+        CUDA.@sync @cuda blocks = num_blocks threads = threads_per_block sum_kernel(
+            g_partial_sums, Nparticles)
 
-        b = @benchmark CUDA.@sync @cuda blocks = $num_blocks threads = $threads_per_block sum_kernel(
-            $g_partial_sums, $Nparticles)
-        push!(sum_kernel_benchmarks, b)
+        CUDA.@sync @cuda blocks = num_blocks threads = threads_per_block normalize_weights_kernel(
+            g_weights, Nparticles, g_partial_sums, g_CDF, g_u, g_seed_i, g_seed_i)
 
-        b = @benchmark CUDA.@sync @cuda blocks = $num_blocks threads = $threads_per_block normalize_weights_kernel(
-            $g_weights, $Nparticles, $g_partial_sums, $g_CDF, $g_u, $g_seed)
-        push!(normalize_weights_kernel_benchmarks, b)
+        CUDA.copy!(g_seed_i, g_seed_o)       
 
-        b = @benchmark CUDA.@sync @cuda blocks = $num_blocks threads = $threads_per_block find_index_kernel(
-            $g_arrayX, $g_arrayY, $g_CDF, $g_u, $g_xj, $g_yj, $g_weights, $Nparticles)
-        push!(find_index_kernel_benchmarks, b)
+        CUDA.@sync @cuda blocks = num_blocks threads = threads_per_block find_index_kernel(
+            g_arrayX, g_arrayY, g_CDF, g_u, g_xj, g_yj, g_weights, Nparticles)
+
 
     end
 
