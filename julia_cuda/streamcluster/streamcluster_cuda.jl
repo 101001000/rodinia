@@ -1,12 +1,14 @@
 include("streamcluster_header.jl")
 
 using CUDA
+using BenchmarkTools
 
 const THREADS_PER_BLOCK = 256
 const MAXBLOCKS = 65536
 
 g_iter = 0 # counter for total # of g_iterations
 
+kernel_compute_cost_benchmarks = []
 
 #=======================================#
 # Euclidean Distance
@@ -133,20 +135,25 @@ function pgain(x, points, z, numcenters, kmax, is_center, center_table,
     num_blocks_y = (num_blocks + MAXBLOCKS - 1) ÷ MAXBLOCKS
     num_blocks_x = (num_blocks + num_blocks_y - 1) ÷ num_blocks_y
 
-    t = CUDA.@elapsed CUDA.@sync @cuda blocks = (num_blocks_x, num_blocks_y) threads = THREADS_PER_BLOCK kernel_compute_cost(
-        Int32(num),         # in:  # of data
-        dim,                # in:  dimension of point coordinates
-        x,                  # in:  point to open a center at
-        p_wd, p_ad, p_cd,   # in:  data point array
-        K,                  # in:  number of centers
-        stride,             # in:  size of each work_mem segment
-        g_coord_d,          # in:  array of point coordinates
-        work_mem_d,         # out: cost and lower field array
-        center_table_d,     # in:  center index table
-        switch_membership_d # out: changes in membership
-    )
+    
+    b = @benchmark (CUDA.@sync @cuda blocks = ($num_blocks_x, $num_blocks_y) threads = $THREADS_PER_BLOCK kernel_compute_cost(
+        Int32($num),         # in:  # of data
+        $dim,                # in:  dimension of point coordinates
+        $x,                  # in:  point to open a center at
+        $p_wd, $p_ad, $p_cd,   # in:  data point array
+        $K,                  # in:  number of centers
+        $stride,             # in:  size of each work_mem segment
+        $g_coord_d,          # in:  array of point coordinates
+        $work_mem_d,         # out: cost and lower field array
+        $center_table_d,     # in:  center index table
+        $switch_membership_d # out: changes in membership
+    )) seconds=0.005
 
-    println("kernel_compute_cost kernel execution time: ", t, " seconds")
+    display(b)
+
+    push!(kernel_compute_cost_benchmarks, b)
+    print("Approximate progress: $(100*length(kernel_compute_cost_benchmarks)/1612)%   \r") #BASED ON MY OWN EXECUTION.
+    flush(stdout)
 
     #=======================================#
     # GPU-TO-CPU MEMORY COPY

@@ -9,6 +9,8 @@ const rng = LibcRNG48()
 
 include("streamcluster_cuda.jl")
 
+include("../../common/julia/utils.jl")
+
 const OUTPUT = haskey(ENV, "OUTPUT")
 
 # configuration
@@ -166,6 +168,8 @@ function pFL(points, feasible, z, k, kmax, cost, iter, e, pid)
             change += pgain(feasible[x+1], points, z, k, kmax, g_is_center,
                 g_center_table, g_switch_membership, g_isCoordChanged[])
         end
+
+        
 
         cost -= change
 
@@ -553,6 +557,9 @@ function streamCluster(stream, kmin, kmax, dim, chunksize, centersize, outfile)
         localSearch(points, kmin, kmax, kfinal)
 
         println("finish local search")
+
+        println("kernel_compute_cost_benchmarks")
+        display(aggregate_benchmarks(kernel_compute_cost_benchmarks))
 
         contcenters(points)
         g_isCoordChanged[] = true
