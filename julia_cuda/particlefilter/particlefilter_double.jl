@@ -242,7 +242,7 @@ function find_index_kernel(arrayX, arrayY, CDF, u, xj, yj, weights, Nparticles)
     return
 end
 
-function normalize_weights_kernel(weights, Nparticles, partial_sums, CDF, u, seed_i, seed_o)
+function normalize_weights_kernel(weights_i, weights_o, Nparticles, partial_sums, CDF, u, seed_i, seed_o)
     block_id = blockIdx().x
     i = blockDim().x * (block_id - 1) + threadIdx().x
 
@@ -257,12 +257,12 @@ function normalize_weights_kernel(weights, Nparticles, partial_sums, CDF, u, see
     sync_threads()
 
     if i <= Nparticles
-        weights[i] = weights[i] / shared[sum_weights_i]
+        weights_o[i] = weights_i[i] / shared[sum_weights_i]
     end
     sync_threads()
 
     if i == 1
-        cdf_calc(CDF, weights, Nparticles)
+        cdf_calc(CDF, weights_o, Nparticles)
         u[1] = (1 / Nparticles) * d_randu(seed_i, seed_o, i)
     end
     sync_threads()
@@ -279,7 +279,7 @@ function normalize_weights_kernel(weights, Nparticles, partial_sums, CDF, u, see
     return
 end
 
-function sum_kernel(partial_sums, Nparticles)
+function sum_kernel(partial_sums_i, partial_sums_o, Nparticles)
     block_id = blockIdx().x
     i = blockDim().x * (block_id - 1) + threadIdx().x
 
@@ -287,9 +287,9 @@ function sum_kernel(partial_sums, Nparticles)
         sum = 0.0
         num_blocks = unsafe_trunc(Int, CUDA.ceil(Nparticles / threads_per_block))
         for x = 1:num_blocks
-            sum += partial_sums[x]
+            sum += partial_sums_i[x]
         end
-        partial_sums[1] = sum
+        partial_sums_o[1] = sum
     end
     return
 end
@@ -406,7 +406,8 @@ function particlefilter(I::Array{UInt8}, IszX, IszY, Nfr, seed::Array{Int32}, Np
 
     g_ind = CuArray{Int}(undef, count_ones * Nparticles)
     g_u = CuArray{Float64}(undef, Nparticles)
-    g_partial_sums = CuArray{Float64}(undef, Nparticles)
+    g_partial_sums_i = CuArray{Float64}(undef, Nparticles)
+    g_partial_sums_o = CuArray{Float64}(undef, Nparticles)
 
     for x = 1:Nparticles
         xj[x] = xe
@@ -419,7 +420,8 @@ function particlefilter(I::Array{UInt8}, IszX, IszY, Nfr, seed::Array{Int32}, Np
     g_yj = CuArray(yj)
     g_objxy = CuArray(objxy)
     g_I = CuArray(I)
-    g_weights = CuArray(weights)
+    g_weights_i = CuArray(weights)
+    g_weights_o = CuArray(weights)
     g_seed_i = CuArray(seed)
     g_seed_o = CuArray(seed)
 
@@ -428,25 +430,32 @@ function particlefilter(I::Array{UInt8}, IszX, IszY, Nfr, seed::Array{Int32}, Np
         print("Progress: $(100*k/Nfr)%   \r")
         flush(stdout)
 
-        CUDA.@sync @cuda blocks = num_blocks threads = threads_per_block likelihood_kernel(
-            (X=g_arrayX, Y=g_arrayY), (x=g_xj, y=g_yj), g_ind,
-            g_objxy, g_likelihood, g_I, g_weights,
-            count_ones, k, IszY, Nfr, g_partial_sums,
-            (max_size=max_size, Nparticles=Nparticles, seed_i=g_seed_i, seed_o=g_seed_o))
+        b = @benchmark (CUDA.@sync @cuda blocks = $num_blocks threads = $threads_per_block likelihood_kernel(
+            (X=$g_arrayX, Y=$g_arrayY), (x=$g_xj, y=$g_yj), $g_ind,
+            $g_objxy, $g_likelihood, $g_I, $g_weights_i,
+            $count_ones, $k, $IszY, $Nfr, $g_partial_sums_i,
+            (max_size=$max_size, Nparticles=$Nparticles, seed_i=$g_seed_i, seed_o=$g_seed_o))) seconds=0.05
+        push!(likelihood_kernel_benchmarks, b)
 
         CUDA.copy!(g_seed_i, g_seed_o)
         
-        CUDA.@sync @cuda blocks = num_blocks threads = threads_per_block sum_kernel(
-            g_partial_sums, Nparticles)
+        b = @benchmark (CUDA.@sync @cuda blocks = $num_blocks threads = $threads_per_block sum_kernel(
+            $g_partial_sums_i, $g_partial_sums_o, $Nparticles)) seconds=0.05
+        push!(sum_kernel_benchmarks, b)
+        
+        CUDA.copy!(g_partial_sums_i, g_partial_sums_o)
 
-        CUDA.@sync @cuda blocks = num_blocks threads = threads_per_block normalize_weights_kernel(
-            g_weights, Nparticles, g_partial_sums, g_CDF, g_u, g_seed_i, g_seed_i)
+        b = @benchmark (CUDA.@sync @cuda blocks = $num_blocks threads = $threads_per_block normalize_weights_kernel(
+            $g_weights_i, $g_weights_o, $Nparticles, $g_partial_sums_i, $g_CDF, $g_u, $g_seed_i, $g_seed_i)) seconds=0.05
+        push!(normalize_weights_kernel_benchmarks, b)
 
-        CUDA.copy!(g_seed_i, g_seed_o)       
 
-        CUDA.@sync @cuda blocks = num_blocks threads = threads_per_block find_index_kernel(
-            g_arrayX, g_arrayY, g_CDF, g_u, g_xj, g_yj, g_weights, Nparticles)
+        CUDA.copy!(g_seed_i, g_seed_o) 
+        CUDA.copy!(g_weights_i, g_weights_o)       
 
+        b = @benchmark (CUDA.@sync @cuda blocks = $num_blocks threads = $threads_per_block find_index_kernel(
+            $g_arrayX, $g_arrayY, $g_CDF, $g_u, $g_xj, $g_yj, $g_weights_i, $Nparticles)) seconds=0.05
+        push!(find_index_kernel_benchmarks, b)
 
     end
 
@@ -461,7 +470,7 @@ function particlefilter(I::Array{UInt8}, IszX, IszY, Nfr, seed::Array{Int32}, Np
 
     arrayX = Array(g_arrayX)
     arrayY = Array(g_arrayY)
-    weights = Array(g_weights)
+    weights = Array(g_weights_i)
 
     xe = ye = 0
     for x = 1:Nparticles
