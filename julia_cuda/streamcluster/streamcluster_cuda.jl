@@ -29,7 +29,7 @@ end
 # Kernel - Compute Cost
 #=======================================#
 function kernel_compute_cost(num, dim, x, p_w, p_a, p_c, K, stride, coord_d,
-    work_mem_d, center_table_d, switch_membership_d)
+    work_mem_di, work_mem_do, center_table_d, switch_membership_d)
     gdx = Base.unsafe_trunc(Int32, gridDim().x)
     bdx = Base.unsafe_trunc(Int32, blockDim().x)
     bix = Base.unsafe_trunc(Int32, blockIdx().x)
@@ -40,6 +40,8 @@ function kernel_compute_cost(num, dim, x, p_w, p_a, p_c, K, stride, coord_d,
     bid = bix - Int32(1) + gdx * (biy - Int32(1))
     tid = bdx * bid + tix - Int32(1)
 
+    set_work_mem = true
+
     if tid < num
         lower_idx = tid * stride
 
@@ -49,11 +51,18 @@ function kernel_compute_cost(num, dim, x, p_w, p_a, p_c, K, stride, coord_d,
         # if computed cost is less then original (it saves), mark it as to reassign
         if x_cost < p_c[tid+1]
             switch_membership_d[tid+1] = true
-            work_mem_d[lower_idx+K+1] += x_cost - p_c[tid+1]
+            if set_work_mem
+                work_mem_do[lower_idx+K+1] = work_mem_di[lower_idx+K+1]
+                set_work_mem = false
+            end
+            work_mem_do[lower_idx+K+1] += x_cost - p_c[tid+1]
             # if computed cost is larger, save the difference
         else
-            work_mem_d[lower_idx+center_table_d[p_a[tid+1]+1]+1] +=
-                p_c[tid+1] - x_cost
+            if set_work_mem
+                work_mem_do[lower_idx+center_table_d[p_a[tid+1]+1]+1] = work_mem_di[lower_idx+center_table_d[p_a[tid+1]+1]+1]
+                set_work_mem = false
+            end
+            work_mem_do[lower_idx+center_table_d[p_a[tid+1]+1]+1] += p_c[tid+1] - x_cost
         end
     end
     return
@@ -122,8 +131,11 @@ function pgain(x, points, z, numcenters, kmax, is_center, center_table,
     p_ad = CuArray(p_a)
     p_cd = CuArray(p_c)
 
-    work_mem_d = CuArray{Float32}(undef, stride * (nThread + 1))
-    fill!(work_mem_d, UInt8(0))
+    work_mem_di = CuArray{Float32}(undef, stride * (nThread + 1))
+    fill!(work_mem_di, UInt8(0))
+    work_mem_do = CuArray{Float32}(undef, stride * (nThread + 1))
+    fill!(work_mem_do, UInt8(0))
+
     switch_membership_d = CuArray{Bool}(undef, num)
     fill!(switch_membership_d, UInt8(0))
 
@@ -140,16 +152,15 @@ function pgain(x, points, z, numcenters, kmax, is_center, center_table,
         Int32($num),         # in:  # of data
         $dim,                # in:  dimension of point coordinates
         $x,                  # in:  point to open a center at
-        $p_wd, $p_ad, $p_cd,   # in:  data point array
+        $p_wd, $p_ad, $p_cd,  # in:  data point array
         $K,                  # in:  number of centers
         $stride,             # in:  size of each work_mem segment
         $g_coord_d,          # in:  array of point coordinates
-        $work_mem_d,         # out: cost and lower field array
+        $work_mem_di,        # in: cost and lower field array
+        $work_mem_do,        # out: cost and lower field array
         $center_table_d,     # in:  center index table
         $switch_membership_d # out: changes in membership
     )) seconds=0.005
-
-    display(b)
 
     push!(kernel_compute_cost_benchmarks, b)
     print("Approximate progress: $(100*length(kernel_compute_cost_benchmarks)/1612)%   \r") #BASED ON MY OWN EXECUTION.
@@ -158,7 +169,7 @@ function pgain(x, points, z, numcenters, kmax, is_center, center_table,
     #=======================================#
     # GPU-TO-CPU MEMORY COPY
     #=======================================#
-    work_mem_h = Array(work_mem_d)
+    work_mem_h = Array(work_mem_do)
     switch_membership = Array(switch_membership_d)
 
     #=======================================#
