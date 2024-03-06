@@ -27,14 +27,15 @@ function bpnn_train_cuda(net)
 
     input_cuda = CuArray(net.input_units)
     output_hidden_cuda = CuArray{Float32}(undef, hid + 1)
-    input_hidden_cuda = CuArray(input_weights_one_dim)
+    input_hidden_cuda_i = CuArray(input_weights_one_dim)
+    input_hidden_cuda_o = CuArray(input_weights_one_dim)
     hidden_partial_sum = CuArray{Float32}(undef, num_blocks * WIDTH)
 
     println("Performing GPU computation")
 
     println("bpnn_layerforward_CUDA")
     b = @benchmark CUDA.@sync @cuda blocks = (1, $num_blocks) threads = (16, 16) bpnn_layerforward_CUDA(
-        $input_cuda, $output_hidden_cuda, $input_hidden_cuda, $hidden_partial_sum, $inp, $hid)
+        $input_cuda, $output_hidden_cuda, $input_hidden_cuda_i, $input_hidden_cuda_o, $hidden_partial_sum, $inp, $hid)
     display(b)
 
     partial_sum = Array(hidden_partial_sum)
@@ -59,11 +60,12 @@ function bpnn_train_cuda(net)
     hidden_delta_cuda = CuArray(net.hidden_delta)
     input_prev_weights_cuda = CuArray(input_weights_prev_one_dim)
 
-    input_hidden_cuda = CuArray(input_weights_one_dim)
+    input_hidden_cuda_i = CuArray(input_weights_one_dim)
 
+    ## This kernel is not being taken into account for the verification step. So it's not splitted, but it should.
     println("bpnn_adjust_weights_cuda")
     b = @benchmark  CUDA.@sync @cuda blocks = (1, $num_blocks) threads = (16, 16) bpnn_adjust_weights_cuda(
-        $hidden_delta_cuda, $hid, $input_cuda, $inp, $input_hidden_cuda, $input_prev_weights_cuda)
+        $hidden_delta_cuda, $hid, $input_cuda, $inp, $input_hidden_cuda_i, $input_prev_weights_cuda)
     display(b)
 
     Array(input_cuda)

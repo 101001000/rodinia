@@ -2,7 +2,8 @@ include("backprop_cuda.jl")
 
 function bpnn_layerforward_CUDA(input_cuda,
                                 output_hidden_cuda,
-                                input_hidden_cuda,
+                                input_hidden_cuda_i,
+                                input_hidden_cuda_o,
                                 hidden_partial_sum,
                                 inp, hid)
     by = blockIdx().y - 1
@@ -21,7 +22,7 @@ function bpnn_layerforward_CUDA(input_cuda,
 
     sync_threads()
 
-    @inbounds weight_matrix[tx, ty] = input_hidden_cuda[index + 1]
+    @inbounds weight_matrix[tx, ty] = input_hidden_cuda_i[index + 1]
 
     sync_threads()
 
@@ -38,7 +39,7 @@ function bpnn_layerforward_CUDA(input_cuda,
         sync_threads()
     end
 
-    @inbounds input_hidden_cuda[index + 1] = weight_matrix[tx, ty]
+    @inbounds input_hidden_cuda_o[index + 1] = weight_matrix[tx, ty]
 
     sync_threads()
 
