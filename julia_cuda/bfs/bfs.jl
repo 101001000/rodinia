@@ -143,24 +143,28 @@ function main(args)
 	g_updating_graph_mask_o = CUDA.zeros(Bool, size(g_updating_graph_mask))
 
     while true
+
+        print("Progress estimated: $(100*k/12)%   \r")
+        flush(stdout)
+
         # if no thread changes this value then the loop stops
         stop[1] = false
         copyto!(g_stop, stop)
 
-        b = @benchmark CUDA.@sync @cuda blocks = $blocks threads = $threads Kernel(
+        b = @benchmark (CUDA.@sync @cuda blocks = $blocks threads = $threads Kernel(
             $g_graph_nodes, $g_graph_edges, $g_graph_mask, $g_graph_mask_o,
             $g_updating_graph_mask, $g_graph_visited,
             $g_cost, $g_cost_o, $no_of_nodes
-        )
+        )) samples=10000
         push!(Kernel_benchmarks, b)
 		                
 		CUDA.copy!(g_graph_mask, g_graph_mask_o)
 		CUDA.copy!(g_cost, g_cost_o)
 
-        b = @benchmark CUDA.@sync @cuda blocks = $blocks threads = $threads Kernel2(
+        b = @benchmark (CUDA.@sync @cuda blocks = $blocks threads = $threads Kernel2(
             $g_graph_mask, $g_updating_graph_mask, $g_updating_graph_mask_o, $g_graph_visited,
             $g_stop, $no_of_nodes
-        )
+        )) samples=10000
 
         push!(Kernel2_benchmarks, b)
 		

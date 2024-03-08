@@ -116,7 +116,7 @@ function main(args)
         print("Progress: $(100*i/block_width)%   \r")
         flush(stdout)
         b = @benchmark (CUDA.@sync @cuda blocks = ($i, 1) threads = ($BLOCK_SIZE, 1) needle_cuda_shared_1(
-            $reference_cuda, $matrix_cuda, $max_cols, $penalty, $i, $block_width))
+            $reference_cuda, $matrix_cuda, $max_cols, $penalty, $i, $block_width)) samples=10000
         push!(needle_cuda_shared_1_benchmarks, b)
     end
 
@@ -128,7 +128,7 @@ function main(args)
     for i = block_width-1:-1:1
         print("Progress: $(100 - (100*i/block_width))%   \r")
         b = @benchmark (CUDA.@sync @cuda blocks = ($i, 1) threads = ($BLOCK_SIZE, 1) needle_cuda_shared_2(
-            $reference_cuda, $matrix_cuda, $max_cols, $penalty, $i, $block_width))
+            $reference_cuda, $matrix_cuda, $max_cols, $penalty, $i, $block_width)) samples=10000
         push!(needle_cuda_shared_2_benchmarks, b)
     end
 

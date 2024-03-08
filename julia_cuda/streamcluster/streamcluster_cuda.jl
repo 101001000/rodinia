@@ -160,7 +160,7 @@ function pgain(x, points, z, numcenters, kmax, is_center, center_table,
         $work_mem_do,        # out: cost and lower field array
         $center_table_d,     # in:  center index table
         $switch_membership_d # out: changes in membership
-    )) seconds=0.005
+    )) samples=1
 
     push!(kernel_compute_cost_benchmarks, b)
     print("Approximate progress: $(100*length(kernel_compute_cost_benchmarks)/1612)%   \r") #BASED ON MY OWN EXECUTION.

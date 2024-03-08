@@ -142,19 +142,22 @@ function lud_cuda(matrix, matrix_dim)
 
     while i < matrix_dim - BLOCK_SIZE
 		
-        b = @benchmark @cuda threads=$BLOCK_SIZE lud_diagonal($matrix, $matrix_o, $i)
+        print("Progress: $(100*i/(matrix_dim - BLOCK_SIZE))%   \r")
+        flush(stdout)
+
+        b = @benchmark (@cuda threads=$BLOCK_SIZE lud_diagonal($matrix, $matrix_o, $i)) samples = 10000
         push!(lud_diagonal_benchmarks, b)
 
         grid_size = (matrix_dim-i)÷BLOCK_SIZE - 1
 
 		CUDA.copy!(matrix, matrix_o)
 
-        b = @benchmark @cuda blocks=$grid_size threads=$BLOCK_SIZE*2 lud_perimeter($matrix, $matrix_o, $i)
+        b = @benchmark (@cuda blocks=$grid_size threads=$BLOCK_SIZE*2 lud_perimeter($matrix, $matrix_o, $i)) samples = 10000
         push!(lud_perimeter_benchmarks, b)
 
 		CUDA.copy!(matrix, matrix_o)
 
-        b = @benchmark @cuda blocks=($grid_size, $grid_size) threads=($BLOCK_SIZE, $BLOCK_SIZE) lud_internal($matrix, $matrix_o, $i)
+        b = @benchmark (@cuda blocks=($grid_size, $grid_size) threads=($BLOCK_SIZE, $BLOCK_SIZE) lud_internal($matrix, $matrix_o, $i)) samples = 10000
         push!(lud_internal_benchmarks, b)
 
 		CUDA.copy!(matrix, matrix_o)
@@ -162,6 +165,6 @@ function lud_cuda(matrix, matrix_dim)
         i += BLOCK_SIZE
     end
 
-    b = @benchmark @cuda threads=$BLOCK_SIZE lud_diagonal($matrix_o, $matrix, $i)
+    b = @benchmark (@cuda threads=$BLOCK_SIZE lud_diagonal($matrix_o, $matrix, $i)) samples = 10000
     push!(lud_diagonal_benchmarks, b)
 end

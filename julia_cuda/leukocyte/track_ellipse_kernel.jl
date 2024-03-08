@@ -269,9 +269,9 @@ function IMGVF_cuda(I, vx, vy, e, max_iterations, cutoff)
     dev_n_array = CuArray(n_array)
     dev_offsets = CuArray(offsets)
 
-    b = @benchmark CUDA.@sync @cuda blocks=$num_cells threads=$threads_per_block IMGVF_kernel($dev_I_flat,
+    b = @benchmark (CUDA.@sync @cuda blocks=$num_cells threads=$threads_per_block IMGVF_kernel($dev_I_flat,
         $dev_IMGVF_flat, $dev_m_array, $dev_n_array, $dev_offsets, Float32($vx),
-        Float32($vy), Float32($e), $max_iterations, Float32($cutoff))
+        Float32($vy), Float32($e), $max_iterations, Float32($cutoff))) samples=10000
 
     push!(IMGVF_benchmarks, b)
 

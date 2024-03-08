@@ -130,10 +130,10 @@ function calc_path(wall, result, rows, cols, pyramid_height, block_cols, border_
         print("Progress: $(100*t/(rows-1))%   \r")
         flush(stdout)
 
-        b = @benchmark CUDA.@sync @cuda blocks = $block_cols threads = $BLOCK_SIZE dynproc_kernel($iter,
+        b = @benchmark (CUDA.@sync @cuda blocks = $block_cols threads = $BLOCK_SIZE dynproc_kernel($iter,
             $wall, $result[$src], $result[$dst],
             $cols, $rows, $t, $border_cols
-        )
+        )) samples=10000
         push!(dynproc_kernel_benchmarks, b)
 
     end
