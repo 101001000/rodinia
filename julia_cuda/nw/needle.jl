@@ -122,6 +122,7 @@ function main(args)
 
     println("needle_cuda_shared_1")
     display(aggregate_benchmarks(needle_cuda_shared_1_benchmarks))
+    save_benchmark(aggregate_benchmarks(needle_cuda_shared_1_benchmarks), "needle_cuda_shared_1.json")
 
     println("Processing bottom-right matrix")
     # process bottom-right matrix
@@ -134,6 +135,7 @@ function main(args)
 
     println("needle_cuda_shared_2")
     display(aggregate_benchmarks(needle_cuda_shared_2_benchmarks))
+    save_benchmark(aggregate_benchmarks(needle_cuda_shared_2_benchmarks), "needle_cuda_shared_2.json")
 
     output_itemsets = Array(matrix_cuda)
 

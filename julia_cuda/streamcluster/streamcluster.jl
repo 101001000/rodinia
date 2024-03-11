@@ -558,8 +558,9 @@ function streamCluster(stream, kmin, kmax, dim, chunksize, centersize, outfile)
 
         println("finish local search")
 
-        println("kernel_compute_cost_benchmarks")
+        println("kernel_compute_cost")
         display(aggregate_benchmarks(kernel_compute_cost_benchmarks))
+        save_benchmark(aggregate_benchmarks(kernel_compute_cost_benchmarks), "kernel_compute_cost.json")
 
         contcenters(points)
         g_isCoordChanged[] = true

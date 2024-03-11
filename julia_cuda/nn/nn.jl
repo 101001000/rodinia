@@ -6,6 +6,8 @@ using BenchmarkTools
 
 using Printf
 
+include("../../common/julia/utils.jl")
+
 const OUTPUT = haskey(ENV, "OUTPUT")
 
 # configuration
@@ -84,6 +86,7 @@ function main(args)
         $d_locations, $d_distances, $numRecords, $lat, $lng)
     println("euclid")
     display(b)
+    save_benchmark(b, "euclid.json")
     
 
 

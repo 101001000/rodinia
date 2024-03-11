@@ -184,8 +184,10 @@ function main(args)
 
     println("Kernel")
     display(aggregate_benchmarks(Kernel_benchmarks))
+    save_benchmark(aggregate_benchmarks(Kernel_benchmarks), "Kernel.json")
     println("Kernel2")
     display(aggregate_benchmarks(Kernel2_benchmarks))
+    save_benchmark(aggregate_benchmarks(Kernel2_benchmarks), "Kernel2.json")
 
     # Store the result into a file
     if OUTPUT

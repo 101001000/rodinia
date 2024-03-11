@@ -5,6 +5,8 @@ using CUDA, CUDA, NVTX
 using Printf
 using BenchmarkTools
 
+include("../../common/julia/utils.jl")
+
 const OUTPUT = haskey(ENV, "OUTPUT")
 
 # configuration
@@ -198,6 +200,7 @@ function compute_tran_temp(MatrixPower, MatrixTemp, col, row, total_iterations,
             $col, $row, $borderCols, $borderRows, $Cap, $Rx, $Ry, $Rz, $step)
         println("calculate_temp")
         display(b)
+        save_benchmark(b, "calculate_temp.json")
     end
 
     return dst

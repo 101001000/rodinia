@@ -461,12 +461,16 @@ function particlefilter(I::Array{UInt8}, IszX, IszY, Nfr, seed::Array{Int32}, Np
 
     println("likelihood_kernel")
     display(aggregate_benchmarks(likelihood_kernel_benchmarks))
+    save_benchmark(aggregate_benchmarks(likelihood_kernel_benchmarks), "likelihood_kernel.json")
     println("sum_kernel")
     display(aggregate_benchmarks(sum_kernel_benchmarks))
+    save_benchmark(aggregate_benchmarks(sum_kernel_benchmarks), "sum_kernel.json")
     println("normalize_weights")
     display(aggregate_benchmarks(normalize_weights_kernel_benchmarks))
+    save_benchmark(aggregate_benchmarks(normalize_weights_kernel_benchmarks), "normalize_weights_kernel.json")
     println("find_index_kernel")
     display(aggregate_benchmarks(find_index_kernel_benchmarks))
+    save_benchmark(aggregate_benchmarks(find_index_kernel_benchmarks), "find_index_kernel.json")
 
     arrayX = Array(g_arrayX)
     arrayY = Array(g_arrayY)

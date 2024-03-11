@@ -46,10 +46,13 @@ function main(args)
 
     println("lud_diagonal")
     display(aggregate_benchmarks(lud_diagonal_benchmarks))
+    save_benchmark(aggregate_benchmarks(lud_diagonal_benchmarks), "lud_diagonal.json")
     println("lud_perimeter")
     display(aggregate_benchmarks(lud_perimeter_benchmarks))
+    save_benchmark(aggregate_benchmarks(lud_perimeter_benchmarks), "lud_perimeter.json")
     println("lud_internal")
     display(aggregate_benchmarks(lud_internal_benchmarks))
+    save_benchmark(aggregate_benchmarks(lud_internal_benchmarks), "lud_internal.json")
 
     if verify
         println("After LUD")

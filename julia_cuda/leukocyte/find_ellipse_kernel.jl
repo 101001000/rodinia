@@ -1,6 +1,8 @@
 using CUDA
 using BenchmarkTools
 
+include("../../common/julia/utils.jl")
+
 # The number of sample points in each ellipse (stencil)
 const NPOINTS = 150
 # The maximum radius of a sample ellipse
@@ -107,6 +109,7 @@ function GICOV_CUDA(host_grad_x, host_grad_y, GICOV_constants)
         $GICOV_constants.c_tX, $GICOV_constants.c_tY, $device_gicov_out)
     println("GICOV_kernel")
     display(b)
+    save_benchmark(b, "GICOV_kernel.json")
 
     Array(device_gicov_out)'
 end
@@ -177,6 +180,7 @@ function dilate_CUDA(img_in, GICOV_constants)
     b = @benchmark CUDA.@sync @cuda blocks = $num_blocks threads = $threads_per_block dilate_kernel($img_dev, $GICOV_constants.c_strel, $dilated_out)
     println("dilate_kernel")
     display(b)
+    save_benchmark(b, "dilate_kernel.json")
 
     Array(dilated_out)
 end

@@ -140,6 +140,7 @@ function calc_path(wall, result, rows, cols, pyramid_height, block_cols, border_
 
     println("dynproc_kernel")
     display(aggregate_benchmarks(dynproc_kernel_benchmarks))
+    save_benchmark(aggregate_benchmarks(dynproc_kernel_benchmarks), "dynproc_kernel.json")
 
     return dst
 end
