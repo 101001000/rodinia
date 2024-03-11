@@ -17,11 +17,11 @@ function aggregate_benchmarks(benchmarks)
 end
 
 function save_benchmark(benchmark, filename)
-    b_dict = Dict("max" => maximum(benchmark).time,
-     "min" => minimum(benchmark).time,
-     "mean" => Statistics.mean(benchmark).time,
-     "var" => Statistics.var(benchmark).time,
-     "std" => Statistics.std(benchmark).time,
+    b_dict = Dict("max" => maximum(benchmark).time / 1000,
+     "min" => minimum(benchmark).time / 1000,
+     "mean" => Statistics.mean(benchmark).time / 1000,
+     "var" => Statistics.var(benchmark).time / 1000,
+     "std" => Statistics.std(benchmark).time / 1000,
      "samples" => length(benchmark.times),
      "memory" => benchmark.memory,
      "allocs" => benchmark.allocs)
