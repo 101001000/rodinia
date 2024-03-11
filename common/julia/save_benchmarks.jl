@@ -74,7 +74,7 @@ function generate_benchmark_csv(suffix)
 
     particle_filter_files = ["../../julia_" * suffix * "/particlefilter/likelihood_kernel.json",
                              "../../julia_" * suffix * "/particlefilter/sum_kernel.json",
-                             "../../julia_" * suffix * "/particlefilter/normalize_weights.json",
+                             "../../julia_" * suffix * "/particlefilter/normalize_weights_kernel.json",
                              "../../julia_" * suffix * "/particlefilter/find_index_kernel.json"]
     jsons_to_csv(particle_filter_files, "particle_filter_" * suffix * ".csv")
 

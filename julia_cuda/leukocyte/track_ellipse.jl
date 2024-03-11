@@ -150,7 +150,7 @@ function ellipsetrack(video, xc0, yc0, Nc, R, Np, Nf)
 
     println("IMGVF_kernel")
     display(aggregate_benchmarks(IMGVF_benchmarks))
-    save_benchmark(aggregate_benchmarks(IMGVF_benchmarks), "IMGVF_benchmarks.json")
+    save_benchmark(aggregate_benchmarks(IMGVF_benchmarks), "IMGVF_kernel.json")
 
     println()
     println()

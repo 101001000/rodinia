@@ -465,7 +465,7 @@ function particlefilter(I::Array{UInt8}, IszX, IszY, Nfr, seed::Array{Int32}, Np
     println("sum_kernel")
     display(aggregate_benchmarks(sum_kernel_benchmarks))
     save_benchmark(aggregate_benchmarks(sum_kernel_benchmarks), "sum_kernel.json")
-    println("normalize_weights")
+    println("normalize_weights_kernel")
     display(aggregate_benchmarks(normalize_weights_kernel_benchmarks))
     save_benchmark(aggregate_benchmarks(normalize_weights_kernel_benchmarks), "normalize_weights_kernel.json")
     println("find_index_kernel")
