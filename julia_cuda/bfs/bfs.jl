@@ -157,7 +157,8 @@ function main(args)
             $g_cost, $g_cost_o, $no_of_nodes
         )) samples=10000
         push!(Kernel_benchmarks, b)
-		                
+        save_benchmark(b, "Kernel_" * string(k) * ".json")
+
 		CUDA.copy!(g_graph_mask, g_graph_mask_o)
 		CUDA.copy!(g_cost, g_cost_o)
 
@@ -167,7 +168,8 @@ function main(args)
         )) samples=10000
 
         push!(Kernel2_benchmarks, b)
-		
+		save_benchmark(b, "Kernel2_" * string(k) * ".json")
+
 		CUDA.copy!(g_updating_graph_mask, g_updating_graph_mask_o)
 
         k += 1
