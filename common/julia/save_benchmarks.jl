@@ -1,6 +1,11 @@
 using JSON, CSV, DataFrames
 
-function jsons_to_csv(json_files, output_csv)
+global_cuda_df = DataFrame()
+global_gen_df = DataFrame()
+global_cuda_kernel_names = []
+global_gen_kernel_names = []
+
+function jsons_to_csv(json_files, output_csv, suffix)
     # Placeholder DataFrame initialization
     df = DataFrame()
     first_file = true
@@ -11,8 +16,32 @@ function jsons_to_csv(json_files, output_csv)
             # Read the JSON file
             contents = JSON.parsefile(file)
 
+
+            if suffix == "cuda"
+                if isempty(global_cuda_kernel_names)
+                    for (key, value) in contents
+                        global_cuda_df[!, Symbol(key)] = Vector{typeof(value)}()
+                    end
+                end
+            else
+                if isempty(global_gen_kernel_names)
+                    for (key, value) in contents
+                        global_gen_df[!, Symbol(key)] = Vector{typeof(value)}()
+                    end
+                end
+            end
+
+            
+
             kernel_name = splitext(basename(file))[1]
             push!(kernel_names, kernel_name)
+
+            if suffix == "cuda"
+                push!(global_cuda_kernel_names, kernel_name)
+            else
+                push!(global_gen_kernel_names, kernel_name)
+            end
+            
 
             # For the first file, initialize the DataFrame with column names and types
             if first_file
@@ -27,6 +56,13 @@ function jsons_to_csv(json_files, output_csv)
             
             # Append the row to the DataFrame
             push!(df, row)
+            
+            if suffix == "cuda"
+                push!(global_cuda_df, row)
+            else
+                push!(global_gen_df, row)
+            end
+            
         else
             println("File does not exist: ", file)
         end
@@ -48,7 +84,7 @@ function generate_benchmark_csv(benchmark, kernels, suffix)
     for kernel in kernels
         push!(kernel_files, "../../julia_" * suffix * "/" * benchmark * "/" * kernel * ".json")
     end
-    jsons_to_csv(kernel_files, benchmark * "_" * suffix * ".csv")
+    jsons_to_csv(kernel_files, benchmark * "_" * suffix * ".csv", suffix)
 end
 
 function generate_benchmarks_csv(suffix)
@@ -65,5 +101,45 @@ function generate_benchmarks_csv(suffix)
     generate_benchmark_csv("streamcluster", ["kernel_compute_cost"], suffix)
 end
 
+# Iterate through all the rows in both dataframes finding the matching one. 
+# Normalize the average value along the smaller one
+function normalize_dfs!(df1, df2)
+    for row1 in eachrow(df1)
+
+        processed_row = false
+
+        for row2 in eachrow(df2)
+            if row1["KernelName"] == row2["KernelName"]
+                nf = row1["mean"]
+                row1["mean"] /= nf
+                row2["mean"] /= nf
+                row1["std"] /= nf
+                row2["std"] /= nf
+                processed_row = true
+            end
+        end
+
+        if !processed_row
+            nf = row1["mean"]
+            row1["mean"] /= nf
+            row1["std"] /= nf
+            println("Row without match, " * string(row1["KernelName"]))
+        end
+    end
+end
+
 generate_benchmarks_csv("cuda")
 generate_benchmarks_csv("gen")
+
+
+global_cuda_kernel_names = replace.(global_cuda_kernel_names, "_" => "-")
+global_gen_kernel_names = replace.(global_gen_kernel_names, "_" => "-")
+
+global_cuda_df = insertcols!(global_cuda_df, 1, :KernelName => global_cuda_kernel_names)
+global_gen_df = insertcols!(global_gen_df, 1, :KernelName => global_gen_kernel_names)
+
+normalize_dfs!(global_cuda_df, global_gen_df)
+
+
+CSV.write("csv/aggregated-set-cuda.csv", global_cuda_df)
+CSV.write("csv/aggregated-set-gen.csv", global_gen_df)
