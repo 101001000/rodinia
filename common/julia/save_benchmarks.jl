@@ -89,8 +89,8 @@ end
 
 function generate_benchmarks_csv(suffix)
     generate_benchmark_csv("backprop", ["bpnn_layerforward_CUDA", "bpnn_adjust_weights_cuda"], suffix)
-    generate_benchmark_csv("bfs", ["Kernel_$(i)" for i in 0:11], suffix)
-    generate_benchmark_csv("bfs", ["Kernel2_$(i)" for i in 0:11], suffix)
+    generate_benchmark_csv("bfs", ["Kernel"], suffix)
+    generate_benchmark_csv("bfs", ["Kernel2"], suffix)
     generate_benchmark_csv("hotspot", ["calculate_temp"], suffix)
     generate_benchmark_csv("leukocyte", ["GICOV_kernel", "dilate_kernel", "IMGVF_kernel"], suffix)
     generate_benchmark_csv("lud", ["lud_diagonal", "lud_perimeter", "lud_internal"], suffix)
@@ -104,17 +104,23 @@ end
 # Iterate through all the rows in both dataframes finding the matching one. 
 # Normalize the average value along the smaller one
 function normalize_dfs!(df1, df2)
+
+    insertcols!(df1, ncol(df1) + 1, :overhead => 0.0)
+    insertcols!(df2, ncol(df2) + 1, :overhead => 0.0)
+
     for row1 in eachrow(df1)
 
         processed_row = false
 
         for row2 in eachrow(df2)
             if row1["KernelName"] == row2["KernelName"]
-                nf = row1["mean"]
-                row1["mean"] /= nf
+                nf = row1["mean"] / 100
+                row1["mean"] /= nf 
                 row2["mean"] /= nf
-                row1["std"] /= nf
-                row2["std"] /= nf
+                row1["overhead"] = row1["mean"] - row2["mean"]
+                row2["overhead"] = row2["mean"] - row1["mean"]
+                #row1["std"] /= nf
+                #row2["std"] /= nf
                 processed_row = true
             end
         end
