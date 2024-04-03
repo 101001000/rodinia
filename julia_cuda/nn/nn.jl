@@ -87,7 +87,8 @@ function main(args)
     println("euclid")
     display(b)
     save_benchmark(b, "euclid.json")
-    
+    save_benchmarks_accum([b], "nn-aggregated.json")
+
 
 
     # Copy data from device memory to host memory.

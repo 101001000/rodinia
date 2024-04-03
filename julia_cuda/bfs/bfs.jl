@@ -189,6 +189,8 @@ function main(args)
     display(aggregate_benchmarks(Kernel2_benchmarks))
     save_benchmark(aggregate_benchmarks(Kernel2_benchmarks), "Kernel2.json")
 
+    save_benchmarks_accum([Kernel_benchmarks; Kernel2_benchmarks], "bfs-aggregated.json")
+
     # Store the result into a file
     if OUTPUT
         open("output.txt", "w") do fpo

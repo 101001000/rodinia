@@ -190,6 +190,8 @@ function compute_tran_temp(MatrixPower, MatrixTemp, col, row, total_iterations,
     src = 1
     dst = 0
 
+    bs = []
+
     for t = 0:num_iterations:total_iterations-1
         temp = src
         src = dst
@@ -201,7 +203,10 @@ function compute_tran_temp(MatrixPower, MatrixTemp, col, row, total_iterations,
         println("calculate_temp")
         display(b)
         save_benchmark(b, "calculate_temp.json")
+        push!(bs, b)
     end
+
+    save_benchmarks_accum(bs, "hotspot-aggregated.json")
 
     return dst
 end

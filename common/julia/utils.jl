@@ -32,3 +32,12 @@ function save_benchmark(benchmark, filename)
         write(f, json_string) 
     end
 end
+
+function save_benchmarks_accum(benchmarks, filename)
+    accmean = sum(map(b -> Statistics.mean(b).time / 1000, benchmarks))
+    b_dict = Dict("accmean" => accmean)
+    json_string = JSON.json(b_dict)
+    open(filename,"w") do f 
+        write(f, json_string) 
+    end
+end

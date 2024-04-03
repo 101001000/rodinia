@@ -472,6 +472,9 @@ function particlefilter(I::Array{UInt8}, IszX, IszY, Nfr, seed::Array{Int32}, Np
     display(aggregate_benchmarks(find_index_kernel_benchmarks))
     save_benchmark(aggregate_benchmarks(find_index_kernel_benchmarks), "find_index_kernel.json")
 
+    save_benchmarks_accum([likelihood_kernel_benchmarks; sum_kernel_benchmarks; normalize_weights_kernel_benchmarks; find_index_kernel_benchmarks], "particlefilter-aggregated.json")
+
+
     arrayX = Array(g_arrayX)
     arrayY = Array(g_arrayY)
     weights = Array(g_weights_i)

@@ -137,6 +137,9 @@ function main(args)
     display(aggregate_benchmarks(needle_cuda_shared_2_benchmarks))
     save_benchmark(aggregate_benchmarks(needle_cuda_shared_2_benchmarks), "needle_cuda_shared_2.json")
 
+    save_benchmarks_accum([needle_cuda_shared_1_benchmarks; needle_cuda_shared_2_benchmarks], "nw-aggregated.json")
+
+
     output_itemsets = Array(matrix_cuda)
 
     if OUTPUT
