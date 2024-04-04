@@ -21,6 +21,7 @@ function save_benchmark(benchmark, filename)
      "min" => minimum(benchmark).time / 1000,
      "mean" => Statistics.mean(benchmark).time / 1000,
      "var" => Statistics.var(benchmark).time / 1000,
+     "median" => Statistics.median(benchmark).time / 1000,
      "std" => Statistics.std(benchmark).time / 1000,
      "samples" => length(benchmark.times),
      "memory" => benchmark.memory,
@@ -35,7 +36,8 @@ end
 
 function save_benchmarks_accum(benchmarks, filename)
     accmean = sum(map(b -> Statistics.mean(b).time / 1000, benchmarks))
-    b_dict = Dict("accmean" => accmean)
+    accmedian = sum(map(b -> Statistics.median(b).time / 1000, benchmarks))
+    b_dict = Dict("accmean" => accmean, "accmedian" => accmedian)
     json_string = JSON.json(b_dict)
     open(filename,"w") do f 
         write(f, json_string) 
