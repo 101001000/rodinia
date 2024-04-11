@@ -1,6 +1,6 @@
 # configuration
-const ETA      = 0.3 # eta value
-const MOMENTUM = 0.3 # momentum value
+const ETA      = 0.3f0 # eta value
+const MOMENTUM = 0.3f0 # momentum value
 
 # static data
 const BIGRND   = 0x7fffffff
