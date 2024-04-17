@@ -102,7 +102,7 @@ function generate_benchmarks_csv(suffix)
 end
 
 # Iterate through all the rows in both dataframes finding the matching one. 
-# Normalize the average value along the smaller one
+# Normalize the average value along the first one.
 function normalize_dfs!(df1, df2)
 
     insertcols!(df1, ncol(df1) + 1, :overhead => 0.0)
@@ -114,20 +114,20 @@ function normalize_dfs!(df1, df2)
 
         for row2 in eachrow(df2)
             if row1["KernelName"] == row2["KernelName"]
-                nf = row1["mean"] / 100
-                row1["mean"] /= nf 
-                row2["mean"] /= nf
-                row1["overhead"] = row1["mean"] - row2["mean"]
-                row2["overhead"] = row2["mean"] - row1["mean"]
-                #row1["std"] /= nf
-                #row2["std"] /= nf
+                nf = row1["median"] / 100
+                row1["median"] /= nf 
+                row2["median"] /= nf
+                row1["overhead"] = row1["median"] - row2["median"]
+                row2["overhead"] = row2["median"] - row1["median"]
+                row1["std"] /= nf
+                row2["std"] /= nf
                 processed_row = true
             end
         end
 
         if !processed_row
-            nf = row1["mean"]
-            row1["mean"] /= nf
+            nf = row1["median"] / 100
+            row1["median"] /= nf
             row1["std"] /= nf
             println("Row without match, " * string(row1["KernelName"]))
         end
