@@ -39,8 +39,8 @@ function bpnn_train_cuda(net)
     println("Performing GPU computation")
 
     println("bpnn_layerforward_CUDA")
-    b1 = @benchmark CUDA.@sync @cuda blocks = (1, $num_blocks) threads = (16, 16) bpnn_layerforward_CUDA(
-        $input_cuda, $output_hidden_cuda, $input_hidden_cuda_i, $input_hidden_cuda_o, $hidden_partial_sum, $inp, $hid)
+    b1 = @benchmark (CUDA.@sync @cuda blocks = (1, $num_blocks) threads = (16, 16) bpnn_layerforward_CUDA(
+        $input_cuda, $output_hidden_cuda, $input_hidden_cuda_i, $input_hidden_cuda_o, $hidden_partial_sum, $inp, $hid)) samples=10000
     display(b1)
     save_benchmark(b1, "bpnn_layerforward_CUDA.json")
 
@@ -70,8 +70,8 @@ function bpnn_train_cuda(net)
 
     ## This kernel is not being taken into account for the verification step. So it's not splitted, but it should.
     println("bpnn_adjust_weights_cuda")
-    b2 = @benchmark  CUDA.@sync @cuda blocks = (1, $num_blocks) threads = (16, 16) bpnn_adjust_weights_cuda(
-        $hidden_delta_cuda, $hid, $input_cuda, $inp, $input_hidden_cuda_i, $input_prev_weights_cuda)
+    b2 = @benchmark  (CUDA.@sync @cuda blocks = (1, $num_blocks) threads = (16, 16) bpnn_adjust_weights_cuda(
+        $hidden_delta_cuda, $hid, $input_cuda, $inp, $input_hidden_cuda_i, $input_prev_weights_cuda)) samples=10000
     display(b2)
     save_benchmark(b2, "bpnn_adjust_weights_cuda.json")
 

@@ -434,19 +434,19 @@ function particlefilter(I::Array{UInt8}, IszX, IszY, Nfr, seed::Array{Int32}, Np
             (X=$g_arrayX, Y=$g_arrayY), (x=$g_xj, y=$g_yj), $g_ind,
             $g_objxy, $g_likelihood, $g_I, $g_weights_i,
             $count_ones, $k, $IszY, $Nfr, $g_partial_sums_i,
-            (max_size=$max_size, Nparticles=$Nparticles, seed_i=$g_seed_i, seed_o=$g_seed_o))) samples=10000
+            (max_size=$max_size, Nparticles=$Nparticles, seed_i=$g_seed_i, seed_o=$g_seed_o))) samples=1000
         push!(likelihood_kernel_benchmarks, b)
 
         CUDA.copy!(g_seed_i, g_seed_o)
         
         b = @benchmark (CUDA.@sync @cuda blocks = $num_blocks threads = $threads_per_block sum_kernel(
-            $g_partial_sums_i, $g_partial_sums_o, $Nparticles)) samples=10000
+            $g_partial_sums_i, $g_partial_sums_o, $Nparticles)) samples=1000
         push!(sum_kernel_benchmarks, b)
         
         CUDA.copy!(g_partial_sums_i, g_partial_sums_o)
 
         b = @benchmark (CUDA.@sync @cuda blocks = $num_blocks threads = $threads_per_block normalize_weights_kernel(
-            $g_weights_i, $g_weights_o, $Nparticles, $g_partial_sums_i, $g_CDF, $g_u, $g_seed_i, $g_seed_i)) samples=10000
+            $g_weights_i, $g_weights_o, $Nparticles, $g_partial_sums_i, $g_CDF, $g_u, $g_seed_i, $g_seed_i)) samples=1000
         push!(normalize_weights_kernel_benchmarks, b)
 
 
@@ -454,7 +454,7 @@ function particlefilter(I::Array{UInt8}, IszX, IszY, Nfr, seed::Array{Int32}, Np
         CUDA.copy!(g_weights_i, g_weights_o)       
 
         b = @benchmark (CUDA.@sync @cuda blocks = $num_blocks threads = $threads_per_block find_index_kernel(
-            $g_arrayX, $g_arrayY, $g_CDF, $g_u, $g_xj, $g_yj, $g_weights_i, $Nparticles)) samples=10000
+            $g_arrayX, $g_arrayY, $g_CDF, $g_u, $g_xj, $g_yj, $g_weights_i, $Nparticles)) samples=1000
         push!(find_index_kernel_benchmarks, b)
 
     end

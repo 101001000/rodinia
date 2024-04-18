@@ -196,10 +196,10 @@ function compute_tran_temp(MatrixPower, MatrixTemp, col, row, total_iterations,
         temp = src
         src = dst
         dst = temp
-        b = @benchmark CUDA.@sync @cuda blocks = ($blockCols, $blockRows) threads = ($BLOCK_SIZE, $BLOCK_SIZE) calculate_temp(
+        b = @benchmark (CUDA.@sync @cuda blocks = ($blockCols, $blockRows) threads = ($BLOCK_SIZE, $BLOCK_SIZE) calculate_temp(
             min($num_iterations, $total_iterations - $t),
             $MatrixPower, $MatrixTemp[$src+1], $MatrixTemp[$dst+1],
-            $col, $row, $borderCols, $borderRows, $Cap, $Rx, $Ry, $Rz, $step)
+            $col, $row, $borderCols, $borderRows, $Cap, $Rx, $Ry, $Rz, $step)) samples=10000
         println("calculate_temp")
         display(b)
         save_benchmark(b, "calculate_temp.json")
