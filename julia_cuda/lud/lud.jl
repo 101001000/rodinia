@@ -54,7 +54,7 @@ function main(args)
     display(aggregate_benchmarks(lud_internal_benchmarks))
     save_benchmark(aggregate_benchmarks(lud_internal_benchmarks), "lud_internal.json")
 
-    save_benchmarks_accum([lud_diagonal_benchmarks; lud_perimeter_benchmarks; lud_internal_benchmarks], "lud-aggregated.json")
+    save_benchmark(aggregate_benchmarks([lud_diagonal_benchmarks; lud_perimeter_benchmarks; lud_internal_benchmarks]), "lud-aggregated.json")
 
     if verify
         println("After LUD")

@@ -177,7 +177,7 @@ function dilate_CUDA(img_in, GICOV_constants)
     threads_per_block = 176
     num_blocks = trunc(Int64, num_threads / threads_per_block + 0.5)
 
-    global b1 = @benchmark CUDA.@sync @cuda blocks = $num_blocks threads = $threads_per_block dilate_kernel($img_dev, $GICOV_constants.c_strel, $dilated_out)
+    global b1 = @benchmark (CUDA.@sync @cuda blocks = $num_blocks threads = $threads_per_block dilate_kernel($img_dev, $GICOV_constants.c_strel, $dilated_out)) samples=500
     println("dilate_kernel")
     display(b1)
     save_benchmark(b1, "dilate_kernel.json")

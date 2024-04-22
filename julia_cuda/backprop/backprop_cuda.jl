@@ -75,7 +75,7 @@ function bpnn_train_cuda(net)
     display(b2)
     save_benchmark(b2, "bpnn_adjust_weights_cuda.json")
 
-    save_benchmarks_accum([b1, b2], "backprop-aggregated.json")
+    save_benchmark(aggregate_benchmarks([b1, b2]), "backprop-aggregated.json")
 
     Array(input_cuda)
 end

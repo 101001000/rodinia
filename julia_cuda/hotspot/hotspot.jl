@@ -202,11 +202,11 @@ function compute_tran_temp(MatrixPower, MatrixTemp, col, row, total_iterations,
             $col, $row, $borderCols, $borderRows, $Cap, $Rx, $Ry, $Rz, $step)) samples=10000
         println("calculate_temp")
         display(b)
-        save_benchmark(b, "calculate_temp.json")
         push!(bs, b)
     end
 
-    save_benchmarks_accum(bs, "hotspot-aggregated.json")
+    save_benchmark(aggregate_benchmarks(bs), "calculate_temp.json")
+    save_benchmark(aggregate_benchmarks(bs), "hotspot-aggregated.json")
 
     return dst
 end

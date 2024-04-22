@@ -151,8 +151,7 @@ function ellipsetrack(video, xc0, yc0, Nc, R, Np, Nf)
     println("IMGVF_kernel")
     display(aggregate_benchmarks(IMGVF_benchmarks))
     save_benchmark(aggregate_benchmarks(IMGVF_benchmarks), "IMGVF_kernel.json")
-
-    save_benchmarks_accum([[b1, b2] ; IMGVF_benchmarks], "leukocyte-aggregated.json")
+    save_benchmark(aggregate_benchmarks([[b1, b2] ; IMGVF_benchmarks]), "leukocyte-aggregated.json")
 
     println()
     println()

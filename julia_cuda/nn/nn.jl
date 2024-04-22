@@ -87,7 +87,7 @@ function main(args)
     println("euclid")
     display(b)
     save_benchmark(b, "euclid.json")
-    save_benchmarks_accum([b], "nn-aggregated.json")
+    save_benchmark(aggregate_benchmarks([b]), "nn-aggregated.json")
 
 
 

@@ -1,14 +1,24 @@
 using BenchmarkTools
 using JSON
 using Statistics
+using Random
 
 function aggregate_benchmarks(benchmarks)
     combined_times = []
     combined_gctimes = []
     combined_memory = 0
     combined_allocs = 0
+    min_samples = length(first(benchmarks).times)
     for b in benchmarks
-        append!(combined_times, b.times)
+        if min_samples != length(b.times)
+            println("Warning, inconsistent benchmark sampling, droping random samples. ")
+        end
+        min_samples = min(min_samples, length(b.times))
+    end
+    for b in benchmarks
+        times_c = copy(b.times)
+        shuffle!(times_c)
+        append!(combined_times, times_c[1:min_samples])
         append!(combined_gctimes, b.gctimes)
         combined_allocs += b.allocs
         combined_memory += b.memory
@@ -29,19 +39,11 @@ function save_benchmark(benchmark, filename)
 
     json_string = JSON.json(b_dict)
 
+    if isfile(filename)
+        println("Warning, overriding existing results")
+    end
+    
     open(filename,"w") do f 
         write(f, json_string) 
-    end
-end
-
-function save_benchmarks_accum(benchmarks, filename)
-    times = []
-    map(b -> (map(bt -> push!(times, bt/1000), b.times)), benchmarks)
-    accmean = Statistics.mean(times)
-    accmedian = Statistics.median(times) 
-    b_dict = Dict("accmean" => accmean, "accmedian" => accmedian)
-    json_string = JSON.json(b_dict)
-    open(filename,"w") do f
-        write(f, json_string)
     end
 end
