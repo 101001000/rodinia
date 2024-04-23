@@ -9,11 +9,15 @@ function aggregate_benchmarks(benchmarks)
     combined_memory = 0
     combined_allocs = 0
     min_samples = length(first(benchmarks).times)
+    dropped_samples = false
     for b in benchmarks
         if min_samples != length(b.times)
-            println("Warning, inconsistent benchmark sampling, droping random samples. ")
+            dropped_samples = true
         end
         min_samples = min(min_samples, length(b.times))
+    end
+    if dropped_samples
+        println("Warning, inconsistent benchmark sampling, dropped random samples. ")
     end
     for b in benchmarks
         times_c = copy(b.times)
